@@ -3,10 +3,12 @@ package Router
 import (
 	"net/http"
 	"strings"
+
+	"../core"
 )
 
 type Route struct {
-	Handler http.Handler
+	Handler core.RangoSevHandler
 	// List of matchers.
 	matchers []matcher
 	err      error
@@ -30,10 +32,6 @@ func (r *Route) addMatcher(m matcher) *Route {
 	}
 	r.matchers = append(r.matchers, m)
 	return r
-}
-
-func (r *Route) Auth(des string) *Route {
-	return r.addMatcher(tokenMatcher(des))
 }
 
 func (r *Route) Headers(pairs ...string) *Route {

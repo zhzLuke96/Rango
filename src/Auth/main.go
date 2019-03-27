@@ -1,5 +1,16 @@
 package Auth
 
+import (
+	"net/http"
+
+	"../core"
+)
+
+const (
+	CookieKey = ""
+	HeaderKey = ""
+)
+
 type User struct {
 	Name    string
 	UID     string
@@ -26,7 +37,7 @@ func (t *Ticket) IsSigned(u *User) bool {
 	ciphertext, ok := u.Tickets[t.LiteToken()]
 	singDoc := SignDoc(u, t)
 	if ok {
-		orig := Decrypt(ciphertext)
+		orig := Decrypt(ciphertext, t.key)
 		if orig == singDoc {
 			return true
 		}
@@ -54,7 +65,7 @@ func (p *Passer) MergePasser(inpass *Passer) {
 	}
 	for path, auth := range inpass.BlackMap {
 		if _, ok := p.BlackMap[path]; ok {
-			p.BlackMap[path] = mergeAuth(pBlackwMap[path], auth)
+			p.BlackMap[path] = mergeAuth(p.BlackMap[path], auth)
 		}
 	}
 }
@@ -67,8 +78,22 @@ func (a *authManager) Query(u *User) *Passer {
 	p := NewPasser()
 	for _, t := range a.Tickets {
 		if t.IsSigned(u) {
-			p.MergePasser(t.Passer)
+			p.MergePasser(&t.Passer)
 		}
 	}
 	return p
+}
+
+func (a *authManager) IsPassed(r *http.Request) bool {
+	// [TODO]
+	return false
+}
+
+func (a *authManager) Mid(w core.ResponseWriteBody, r *http.Request, next func()) {
+	if a.IsPassed(r) {
+		next()
+	} else {
+		w.WriteHeader(403)
+		w.Write([]byte("Unauthorized."))
+	}
 }

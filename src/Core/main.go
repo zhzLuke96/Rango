@@ -52,39 +52,45 @@ func (p *WrapResponseWriter) ContentLength() int {
 // MiddlewareFunc filter type
 type MiddlewareFunc func(ResponseWriteBody, *http.Request, func())
 
-// RangoSev server struct
-type RangoSev struct {
+// RangoSevHandler server struct
+type RangoSevHandler struct {
 	middlewares []MiddlewareFunc
 	Handler     http.Handler
 }
 
+func (r *RangoSevHandler) HandleFunc(fn func(http.ResponseWriter, *http.Request)) *RangoSevHandler {
+	r.Handler = http.HandlerFunc(fn)
+	return r
+}
+
 // ServeHTTP for http.Handler interface
-func (p *RangoSev) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (r *RangoSevHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	i := 0
 	wr := NewWrapResponseWriter(w)
 	var next func()
 	next = func() {
-		if i < len(p.middlewares) {
+		if i < len(r.middlewares) {
 			i++
-			p.middlewares[i-1](wr, r, next)
-		} else if p.Handler != nil {
-			p.Handler.ServeHTTP(wr, r)
+			r.middlewares[i-1](wr, req, next)
+		} else if r.Handler != nil {
+			r.Handler.ServeHTTP(wr, req)
 		}
 	}
 	next()
 }
 
 // Use push MiddlewareFunc
-func (p *RangoSev) Use(funcs ...MiddlewareFunc) {
+func (r *RangoSevHandler) Use(funcs ...MiddlewareFunc) *RangoSevHandler {
 	for _, f := range funcs {
-		p.middlewares = append(p.middlewares, f)
+		r.middlewares = append(r.middlewares, f)
 	}
+	return r
 }
 
-func (p *RangoSev) Go(port string) {
+func (r *RangoSevHandler) Go(port string) {
 	sev := &http.Server{
 		Addr:        ":" + port,
-		Handler:     p,
+		Handler:     r,
 		ReadTimeout: 5 * time.Second,
 	}
 	sev.ListenAndServe()

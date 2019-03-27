@@ -34,15 +34,19 @@ func (m methodMatcher) Match(r *http.Request) bool {
 	return false
 }
 
-type pathMatcher []struct {
+type pathMatcher struct {
 	Template string
 	Regexp   regexp.Regexp
-	VarsN    map[string]string
+	VarsN    []string
+}
+
+func (p *pathMatcher) Match(r *http.Request) bool {
+	return p.Regexp.MatchString(r.URL.String())
 }
 
 func NewPathMatcher(tpl string, strictSlash bool) *pathMatcher {
 	var idxs []int
-	idxs, r.err = braceIndices(tpl)
+	idxs, _ = braceIndices(tpl)
 	template := tpl
 	defaultPattern := "[^/]+"
 
@@ -69,22 +73,12 @@ func NewPathMatcher(tpl string, strictSlash bool) *pathMatcher {
 		pattern.WriteString("[/]?")
 	}
 
-	reg, errCompile := regexp.Compile(pattern.String())
+	reg, _ := regexp.Compile(pattern.String())
 	return &pathMatcher{
-		template: template,
-		regexp:   reg,
-		varsN:    varsN,
+		Template: template,
+		Regexp:   *reg,
+		VarsN:    varsN,
 	}
-}
-
-func (p *pathMatcher) Match(r *http.Request) bool {
-	path := r.URL.RawPath
-	for _, pm := range p {
-		if pm.Regexp.MatchString(path) {
-			return true
-		}
-	}
-	return false
 }
 
 // braceIndices returns the first level curly brace indices from a string.
@@ -110,6 +104,17 @@ func braceIndices(s string) ([]int, error) {
 		return nil, fmt.Errorf("mux: unbalanced braces in %q", s)
 	}
 	return idxs, nil
+}
+
+// checkPairs returns the count of strings passed in, and an error if
+// the count is not an even number.
+func checkPairs(pairs ...string) (int, error) {
+	length := len(pairs)
+	if length%2 != 0 {
+		return length, fmt.Errorf(
+			"mux: number of parameters must be multiple of 2, got %v", pairs)
+	}
+	return length, nil
 }
 
 // mapFromPairsToString converts variadic string parameters to a

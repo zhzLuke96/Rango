@@ -38,16 +38,16 @@ func ErrCatch(w core.ResponseWriteBody, r *http.Request, next func()) {
 	}
 }
 
-const cookieName = "__sid__"
+const sessionCookieName = "__sid__"
 
 // Sission if request cookies.length == 0 then add a cookie
 func Sission(w core.ResponseWriteBody, r *http.Request, next func()) {
 
-	if _, err := r.Cookie(cookieName); err != nil {
+	if _, err := r.Cookie(sessionCookieName); err != nil {
 		c := new(http.Cookie)
 		c.HttpOnly = true
 		c.Expires = time.Now().Add(time.Hour)
-		c.Name = cookieName
+		c.Name = sessionCookieName
 		c.Value = randStr(40)
 		http.SetCookie(w, c)
 	}
