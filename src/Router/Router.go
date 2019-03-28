@@ -1,7 +1,7 @@
 package Router
 
 import "net/http"
-import "../core"
+import core "../Core"
 
 type Router struct {
 	routes []*Route
@@ -13,7 +13,7 @@ type HandleFunc func(http.ResponseWriter, *http.Request)
 func (r *Router) Match(req *http.Request, h *core.RangoSevHandler) bool {
 	for _, route := range r.routes {
 		if route.Match(req) {
-			h = &route.Handler
+			*h = route.Handler
 			return true
 		}
 	}
@@ -22,7 +22,7 @@ func (r *Router) Match(req *http.Request, h *core.RangoSevHandler) bool {
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var handler core.RangoSevHandler
-	if r.Match(req, &handler) {
+	if !r.Match(req, &handler) {
 		handler = core.RangoSevHandler{
 			Handler: http.NotFoundHandler(),
 		}

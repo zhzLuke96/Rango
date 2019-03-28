@@ -2,10 +2,14 @@ package Auth
 
 func Decrypt(text string, publicKey string) string {
 	// [TODO]
-	return ""
+	return text
 }
 
 func Encrypt(text string, privateKey string) string {
 	// [TODO]
-	return ""
+	return text
+}
+
+func NewKey() (pubilc, private string) {
+	return "", ""
 }

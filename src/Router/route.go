@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"../core"
+	core "../Core"
 )
 
 type Route struct {

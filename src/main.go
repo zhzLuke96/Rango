@@ -4,13 +4,13 @@ import (
 	"net/http"
 	"time"
 
+	core "./Core"
 	mid "./Mid"
 	"./Router"
-	"./core"
 )
 
-func newDefaultSev(port string) (*http.Server, *core.MidHandler) {
-	handler := &core.RangoSev{}
+func newDefaultSev(port string) (*http.Server, *core.RangoSevHandler) {
+	handler := &core.RangoSevHandler{}
 	return &http.Server{
 		Addr:        ":" + port,
 		Handler:     handler,
@@ -20,6 +20,7 @@ func newDefaultSev(port string) (*http.Server, *core.MidHandler) {
 
 func SimpleGo(port string) error {
 	sev, handler := newDefaultSev(port)
+	handler.Handler = http.FileServer(http.Dir("./www"))
 	handler.Use(mid.LogRequest, mid.ErrCatch, mid.Sission)
 	return sev.ListenAndServe()
 }
@@ -28,6 +29,6 @@ func NewRouter() *Router.Router {
 	return &Router.Router{}
 }
 
-func NewSev() *core.RangoSev {
-	return &core.RangoSev{}
+func NewSev() *core.RangoSevHandler {
+	return &core.RangoSevHandler{}
 }

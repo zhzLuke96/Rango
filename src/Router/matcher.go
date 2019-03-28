@@ -41,7 +41,7 @@ type pathMatcher struct {
 }
 
 func (p *pathMatcher) Match(r *http.Request) bool {
-	return p.Regexp.MatchString(r.URL.String())
+	return p.Regexp.MatchString(r.URL.Path)
 }
 
 func NewPathMatcher(tpl string, strictSlash bool) *pathMatcher {

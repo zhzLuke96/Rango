@@ -1,44 +1,58 @@
 package main
 
-import Rango "../src"
+import (
+	"flag"
+	"net/http"
 
-func main(){
+	Rango "../src"
+	"../src/Auth"
+	mid "../src/Mid"
+)
+
+func main() {
+	var demoNum int
+	flag.IntVar(&demoNum, 0, "choose demo.")
+	flag.Parse()
+
+	switch demoNum {
+	case 0:
+		useDefaultSev("8080")
+	case 1:
+		useCustomSev("8080")
+	case 2:
+		useTokenAuthSev("8080")
+	}
 	return
 }
 
-
-func useDefaultSev(port string){
+func useDefaultSev(port string) {
 	Rango.SimpleGo(port)
-	Rango.Router(&{
-		//...
-	})
 }
 
-func useCustomSev(port string){
+func useCustomSev(port string) {
 	sev := Rango.NewSev()
 	router := Rango.NewRouter()
-	session := Rango.Session()
-	// sev.Use(Rango.Mid.Log)
-	// sev.Use(Rango.Mid.ErrCAtch)
-	// sev.Use(session.Mid)
-	// sev.Use(router.Mid)
-	sev.Use(Rango.Mid.Log,Rango.Mid.ErrCAtch,session.Mid,router.Mid)
+	// session := Rango.Session()
+	sev.Use(mid.LogRequest)
+	sev.Use(mid.ErrCatch)
+	// sev.Use(session.mid)
+	sev.Use(router.Mid)
+	router.Handler("/home/", http.StripPrefix("/home/", http.FileServer(http.Dir("./www"))))
+	// sev.Use(mid.Log, mid.ErrCAtch, session.mid, router.mid)
 
 	sev.Go(port)
 }
 
-func useTokenAuthSev(port string){
+func useTokenAuthSev(port string) {
 	sev := Rango.NewSev()
-	auth := Rango.NewAuthManager()
 	router := Rango.NewRouter()
-
-	// auth.AddUser(0,"admin","admin")
-	// auth.AddUser(1,"user1","123456")
-	// auth.AddAdmin("admin")
 
 	sev.Use(Rango.Mid.Log)
 	sev.Use(Rango.Mid.ErrCAtch)
+	sev.Use(Auth.GlobalAuthManager.Mid)
 	sev.Use(router.Mid)
 
-	Rango.Go(sev,port)
+	Auth.GlobalUsers.AddOne("user1", "123456")
+
+	Rango.Go(sev, port)
 }
