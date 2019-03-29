@@ -2,46 +2,97 @@ package Auth
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"regexp"
+	"strings"
 
-	core "../Core"
 	"../utils"
 )
 
 const (
-	CookieKey = ""
-	HeaderKey = ""
+	CookieKey = "RangoToken"
+	HeaderKey = "RANGO_TOKEN"
 )
 
 var GlobalAuthManager = NewAuthManager()
 
 type User struct {
-	Name string
-	UID  string
+	Name     string
+	UID      string
+	Password string
 
-	password string
+	PublicKey  string
+	privateKey string
 
-	Tickets map[string]string // liteToken:ciphertext
+	TicketProofs map[string]string // salt:proof
 }
 
-func SignDoc(u *User, t *Ticket) string {
-	return u.UID + t.salt + u.Name + t.CreateUserID
+func NewUser(Name, Uid, Pass string) *User {
+	return &User{
+		Name:         Name,
+		UID:          Uid,
+		Password:     Pass,
+		TicketProofs: make(map[string]string),
+	}
+}
+
+func (u *User) IsMySigned(proof, salt string, subU *User) bool {
+	decode, err := Decrypt(proof, u.PublicKey)
+	if err != nil {
+		log.Printf("[Signed Check ERROR]:\n%s\n", err.Error())
+		return false
+	}
+	temp := strings.Replace(decode, salt, "", 1)
+	temp = strings.Replace(temp, subU.UID, "", 1)
+	return temp == u.UID
+}
+
+func (u *User) SignTicket(subU *User, t *Ticket) string {
+	return u.SignDoc(subU.UID + t.salt + u.UID)
+}
+
+func (u *User) SignDoc(doc string) string {
+	enc, err := Encrypt(doc, u.privateKey)
+	if err != nil {
+		log.Printf("[SignDoc ERROR]:\n%s\n", err.Error())
+		return ""
+	}
+	return enc
+}
+
+func (u *User) GetPublicKey() string {
+	return u.PublicKey
+}
+
+func (u *User) GenNewKey() string {
+	puk, prk, err := NewKey()
+	if err != nil {
+		log.Printf("[New RSA KEY ERROR]:\n%s\n", err.Error())
+		return ""
+	}
+	u.PublicKey = puk
+	u.privateKey = prk
+	return puk
 }
 
 type Ticket struct {
 	salt         string // random string
-	Token        string // publicKey
-	key          string // privateKey
 	CreateUserID string
 	Passer       *Passer
 }
 
+func (t *Ticket) IsSigned(u *User) bool {
+	if proof, ok := u.TicketProofs[t.salt]; ok {
+		supU := GlobalUsers.GetUser(t.CreateUserID)
+		return supU.IsMySigned(proof, t.salt, u)
+	}
+	return false
+}
+
 func NewTicket(UserID string) *Ticket {
-	pu, pr := NewKey()
 	return &Ticket{
 		salt:         utils.RandStr(20),
-		Token:        pu,
-		key:          pr,
 		CreateUserID: UserID,
 		Passer:       NewPasser(),
 	}
@@ -49,104 +100,70 @@ func NewTicket(UserID string) *Ticket {
 
 func NewTopTicket(UserID string) *Ticket {
 	t := NewTicket(UserID)
-	t.Passer.AllowMap["/"] = newAuth(true, true, true, true)
+	t.Passer.AllowMap["/"] = newCRUD(true, true, true, true)
 	return t
 }
 
 func NewBanTicket(UserID string) *Ticket {
 	t := NewTicket(UserID)
-	t.Passer.BlackMap["/"] = newAuth(true, true, true, true)
+	t.Passer.BlackMap["/"] = newCRUD(true, true, true, true)
 	return t
 }
 
-func (t *Ticket) LiteToken() string {
-	return t.Token[:16]
-}
-
-func (t *Ticket) IsSigned(u *User) bool {
-	ciphertext, ok := u.Tickets[t.LiteToken()]
-	singDoc := SignDoc(u, t)
-	if ok {
-		orig := Decrypt(ciphertext, t.key)
-		if orig == singDoc {
-			return true
-		}
-	}
-	return false
-}
-
 type Passer struct {
-	AllowMap map[string]int
-	BlackMap map[string]int
+	AllowMap map[string]CRUD `json:"allow"`
+	BlackMap map[string]CRUD `json:"black"`
 }
 
 func NewPasser() *Passer {
 	return &Passer{
-		AllowMap: make(map[string]int),
-		BlackMap: make(map[string]int),
+		AllowMap: make(map[string]CRUD),
+		BlackMap: make(map[string]CRUD),
 	}
 }
 
 func (p *Passer) MergePasser(inpass *Passer) {
 	for path, auth := range inpass.AllowMap {
 		if _, ok := p.AllowMap[path]; ok {
-			p.AllowMap[path] = mergeAuth(p.AllowMap[path], auth)
+			p.AllowMap[path] = mergeCRUD(p.AllowMap[path], auth)
 		}
 	}
 	for path, auth := range inpass.BlackMap {
 		if _, ok := p.BlackMap[path]; ok {
-			p.BlackMap[path] = mergeAuth(p.BlackMap[path], auth)
+			p.BlackMap[path] = mergeCRUD(p.BlackMap[path], auth)
 		}
 	}
 }
 
-type authManager struct {
-	Tickets map[string]*Ticket
-}
-
-func NewAuthManager() *authManager {
-	a := &authManager{
-		Tickets: make(map[string]*Ticket),
-	}
-	return a
-}
-
-func (a *authManager) Push(flag string, t *Ticket) {
-	count := 1
-	flagtemp := flag
-	for {
-		if _, ok := a.Tickets[flag]; ok {
-			flag = fmt.Sprintf("%s%d", flagtemp, count)
-		} else {
-			a.Tickets[flag] = t
+func (p *Passer) IsPassedReq(r *http.Request) bool {
+	UrlPth := r.URL.Path
+	method := r.Method
+	for reg, auth := range p.BlackMap {
+		re, err := regexp.Compile(reg)
+		if err != nil {
+			continue
+		}
+		if re.MatchString(UrlPth) && auth.canDo(method) {
+			return false
 		}
 	}
-}
-
-func (a *authManager) Query(u *User) *Passer {
-	p := NewPasser()
-	for _, t := range a.Tickets {
-		if t.IsSigned(u) {
-			p.MergePasser(t.Passer)
+	for reg, auth := range p.AllowMap {
+		re, err := regexp.Compile(reg)
+		if err != nil {
+			continue
+		}
+		if re.MatchString(UrlPth) && auth.canDo(method) {
+			return true
 		}
 	}
-	return p
-}
-
-func (a *authManager) IsPassed(r *http.Request) bool {
-	// [TODO]
 	return false
 }
 
-func (a *authManager) Mid(w core.ResponseWriteBody, r *http.Request, next func()) {
-	if a.IsPassed(r) {
-		next()
-	} else {
-		w.WriteHeader(403)
-		w.Write([]byte("Unauthorized."))
-	}
-}
-
 func init() {
-	GlobalUsers.AddAdmin("admin", "admin")
+	randPassword := utils.RandStr(8)
+	SystemUser.Password = randPassword
+	SystemUser.GenNewKey()
+	fmt.Printf("=== [Auth] middleware inited ===")
+	fmt.Printf("System password: %s\n", randPassword)
+	fmt.Printf("System Public Key: %s\n", SystemUser.GetPublicKey())
 }

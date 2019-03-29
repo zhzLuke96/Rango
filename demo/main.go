@@ -11,7 +11,8 @@ import (
 
 func main() {
 	var demoNum int
-	flag.IntVar(&demoNum, 0, "choose demo.")
+	flag.IntVar(&demoNum, "demo", 0, "choose demo.")
+	flag.IntVar(&demoNum, "d", 0, "choose demo.")
 	flag.Parse()
 
 	switch demoNum {
@@ -47,12 +48,12 @@ func useTokenAuthSev(port string) {
 	sev := Rango.NewSev()
 	router := Rango.NewRouter()
 
-	sev.Use(Rango.Mid.Log)
-	sev.Use(Rango.Mid.ErrCAtch)
+	sev.Use(mid.LogRequest)
+	sev.Use(mid.ErrCatch)
 	sev.Use(Auth.GlobalAuthManager.Mid)
 	sev.Use(router.Mid)
 
 	Auth.GlobalUsers.AddOne("user1", "123456")
 
-	Rango.Go(sev, port)
+	sev.Go(port)
 }
