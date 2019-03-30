@@ -95,3 +95,10 @@ func (r *RangoSevHandler) Go(port string) {
 	}
 	sev.ListenAndServe()
 }
+
+type HandlerFunc func(ResponseWriteBody, *http.Request)
+
+// ServeHTTP calls f(w, r).
+func (f HandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	f(NewWrapResponseWriter(w), r)
+}

@@ -13,7 +13,7 @@ type Token struct {
 	IssuedAt       time.Time `json:"iss"`
 	TargetUserName string    `json:"U"`
 	Salt           string    `json:"salt"`
-	Passd          Passer    `json:"pass"`
+	Passd          *Passer   `json:"pass"`
 }
 
 func NewToken(dur time.Duration, uname string) *Token {
@@ -22,12 +22,13 @@ func NewToken(dur time.Duration, uname string) *Token {
 		IssuedAt:       time.Now(),
 		TargetUserName: uname,
 		Salt:           utils.RandStr(10),
+		Passd:          GlobalAuthManager.Query(GlobalUsers.GetUser(uname)),
 	}
 }
 
 func NewTokenFromJSON(text string) (*Token, error) {
 	var T Token
-	err := json.Unmarshal([]byte(text), T)
+	err := json.Unmarshal([]byte(text), &T)
 	if err != nil {
 		return nil, err
 	}

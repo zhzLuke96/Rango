@@ -11,49 +11,72 @@ import (
 	"strings"
 )
 
-const defaultRsaLength = 128
+const defaultRsaLength = 1024
+const RSAgap = "<##RSA##>"
 
 func trimHeadTailLine(text string) string {
 	tarr := strings.Split(text, "\n")
 	return strings.Join(tarr[1:len(tarr)-2], "\n")
 }
 
-func rsaPublicFmt(public string) []byte {
-	return []byte(
-		fmt.Sprintf("-----BEGIN PUBLIC KEY-----\n%s\n-----END PUBLIC KEY-----",
-			public))
-}
-
-func rsaPrivateFmt(private string) []byte {
+func rsaPublicFmt(key string) []byte {
 	return []byte(
 		fmt.Sprintf("-----BEGIN RSA PRIVATE KEY-----\n%s\n-----END RSA PRIVATE KEY-----",
-			private))
+			key))
 }
 
-func Decrypt(text string, publicKey string) (string, error) {
-	rsaPubKey := rsaPublicFmt(publicKey)
-	res, err := rsaDecrypt([]byte(text), rsaPubKey)
+func rsaPrivateFmt(key string) []byte {
+	return []byte(
+		fmt.Sprintf("-----BEGIN PUBLIC KEY-----\n%s\n-----END PUBLIC KEY-----",
+			key))
+}
+
+func Decrypt(ciphertext string, decodekey string) (string, error) {
+	cipherArr := strings.Split(ciphertext, RSAgap)
+	ret := ""
+	for _, v := range cipherArr {
+		enc, err := doDcrypt(v, decodekey)
+		if err != nil {
+			return "", err
+		}
+		ret += enc
+	}
+	return ret, nil
+}
+
+func doDcrypt(ciphertext string, decodekey string) (string, error) {
+	rsaPriKey := rsaPublicFmt(decodekey)
+	res, err := rsaDecrypt([]byte(ciphertext), rsaPriKey)
 	if err != nil {
 		return "", err
 	}
 	return string(res), nil
 }
 
-func Encrypt(text string, privateKey string) (string, error) {
-	rsaPriKey := rsaPrivateFmt(privateKey)
-	res, err := rsaEncrypt([]byte(text), rsaPriKey)
+func Encrypt(text string, encodekey string) (string, error) {
+	pubsize := defaultRsaLength / 16
+	if len(text) >= pubsize-11 {
+		tempt := text[:pubsize-12]
+		next := text[pubsize-12:]
+		ten, _ := Encrypt(tempt, encodekey)
+		nt, _ := Encrypt(next, encodekey)
+		return ten + RSAgap + nt, nil
+	}
+	rsaPubKey := rsaPrivateFmt(encodekey)
+	res, err := rsaEncrypt([]byte(text), rsaPubKey)
 	if err != nil {
 		return "", err
 	}
 	return string(res), nil
 }
 
-func NewKey() (pubilc, private string, err error) {
-	puk, prk, err := genRsaKey(defaultRsaLength)
+func NewKey() (decodekey, encodekey string, err error) {
+	prk, puk, err := genRsaKey(defaultRsaLength)
 	if err != nil {
 		return "", "", err
 	}
-	return trimHeadTailLine(string(puk)), trimHeadTailLine(string(prk)), nil
+	// return trimHeadTailLine(string(puk)), trimHeadTailLine(string(prk)), nil
+	return trimHeadTailLine(string(prk)), trimHeadTailLine(string(puk)), nil
 }
 
 func rsaEncrypt(origData, publicKey []byte) ([]byte, error) {
@@ -62,12 +85,11 @@ func rsaEncrypt(origData, publicKey []byte) ([]byte, error) {
 		return nil, errors.New("public key error")
 	}
 
-	pubInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
+	pub, err := x509.ParsePKCS1PublicKey(block.Bytes)
 	if err != nil {
 		return nil, err
 	}
 
-	pub := pubInterface.(*rsa.PublicKey)
 	return rsa.EncryptPKCS1v15(rand.Reader, pub, origData)
 }
 
@@ -104,10 +126,7 @@ func genRsaKey(bits int) (prik []byte, pubk []byte, err error) {
 	}
 
 	publicKey := &privateKey.PublicKey
-	derPkix, err := x509.MarshalPKIXPublicKey(publicKey)
-	if err != nil {
-		return nil, nil, err
-	}
+	derPkix := x509.MarshalPKCS1PublicKey(publicKey)
 	block = &pem.Block{
 		Type:  "PUBLIC KEY",
 		Bytes: derPkix,

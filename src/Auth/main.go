@@ -49,10 +49,17 @@ func (u *User) IsMySigned(proof, salt string, subU *User) bool {
 }
 
 func (u *User) SignTicket(subU *User, t *Ticket) string {
-	return u.SignDoc(subU.UID + t.salt + u.UID)
+	return u.SignDoc(subU.UID + t.Salt + u.UID)
+}
+
+func (u *User) TakeTicket(subU *User, t *Ticket) {
+	u.TicketProofs[t.Salt] = u.SignTicket(subU, t)
 }
 
 func (u *User) SignDoc(doc string) string {
+	if u.privateKey == "" {
+		u.GenNewKey()
+	}
 	enc, err := Encrypt(doc, u.privateKey)
 	if err != nil {
 		log.Printf("[SignDoc ERROR]:\n%s\n", err.Error())
@@ -66,33 +73,36 @@ func (u *User) GetPublicKey() string {
 }
 
 func (u *User) GenNewKey() string {
-	puk, prk, err := NewKey()
+	if u.privateKey+u.PublicKey != "" {
+		return u.PublicKey
+	}
+	decodekey, encodekey, err := NewKey()
 	if err != nil {
 		log.Printf("[New RSA KEY ERROR]:\n%s\n", err.Error())
 		return ""
 	}
-	u.PublicKey = puk
-	u.privateKey = prk
-	return puk
+	u.PublicKey = decodekey
+	u.privateKey = encodekey
+	return decodekey
 }
 
 type Ticket struct {
-	salt         string // random string
+	Salt         string // random string
 	CreateUserID string
 	Passer       *Passer
 }
 
 func (t *Ticket) IsSigned(u *User) bool {
-	if proof, ok := u.TicketProofs[t.salt]; ok {
-		supU := GlobalUsers.GetUser(t.CreateUserID)
-		return supU.IsMySigned(proof, t.salt, u)
+	if proof, ok := u.TicketProofs[t.Salt]; ok {
+		supU := GlobalUsers.GetUserID(t.CreateUserID)
+		return supU.IsMySigned(proof, t.Salt, u)
 	}
 	return false
 }
 
 func NewTicket(UserID string) *Ticket {
 	return &Ticket{
-		salt:         utils.RandStr(20),
+		Salt:         utils.RandStr(20),
 		CreateUserID: UserID,
 		Passer:       NewPasser(),
 	}
@@ -126,11 +136,15 @@ func (p *Passer) MergePasser(inpass *Passer) {
 	for path, auth := range inpass.AllowMap {
 		if _, ok := p.AllowMap[path]; ok {
 			p.AllowMap[path] = mergeCRUD(p.AllowMap[path], auth)
+		}else{
+			p.AllowMap[path] = auth
 		}
 	}
 	for path, auth := range inpass.BlackMap {
 		if _, ok := p.BlackMap[path]; ok {
 			p.BlackMap[path] = mergeCRUD(p.BlackMap[path], auth)
+		}else{
+			p.BlackMap[path] = auth
 		}
 	}
 }
@@ -159,11 +173,11 @@ func (p *Passer) IsPassedReq(r *http.Request) bool {
 	return false
 }
 
-func init() {
-	randPassword := utils.RandStr(8)
-	SystemUser.Password = randPassword
+func DefaultAuthInit() {
+	// randPassword := utils.RandStr(8)
+	// SystemUser.Password = randPassword
 	SystemUser.GenNewKey()
-	fmt.Printf("=== [Auth] middleware inited ===")
-	fmt.Printf("System password: %s\n", randPassword)
-	fmt.Printf("System Public Key: %s\n", SystemUser.GetPublicKey())
+	fmt.Printf("=== [Auth] middleware inited ===\n")
+	// fmt.Printf("System password: %s\n", randPassword)
+	fmt.Printf("System Public Key: %s\n\n", SystemUser.GetPublicKey())
 }

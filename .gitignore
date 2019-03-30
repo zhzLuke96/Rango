@@ -16,6 +16,7 @@
 
 # build file
 *.o
+*.exe
 
 # vscode config
 /.vscode

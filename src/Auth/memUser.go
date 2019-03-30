@@ -8,12 +8,14 @@ var (
 )
 
 type memUsersDB struct {
-	users map[string]*User
+	users   map[string]*User
+	usersID map[string]*User
 }
 
 func NewMemUsersDB() *memUsersDB {
 	return &memUsersDB{
-		users: make(map[string]*User),
+		users:   make(map[string]*User),
+		usersID: make(map[string]*User),
 	}
 }
 
@@ -29,8 +31,19 @@ func (m *memUsersDB) Login(name, pass string) (bool, error) {
 	}
 }
 
+func (m *memUsersDB) NameCanUse(name string) bool {
+	if _, ok := m.users[name]; ok {
+		return false
+	}
+	return true
+}
+
 func (m *memUsersDB) GetUser(name string) *User {
 	return m.users[name]
+}
+
+func (m *memUsersDB) GetUserID(id string) *User {
+	return m.usersID[id]
 }
 
 func (m *memUsersDB) length() int {
@@ -45,6 +58,7 @@ func (m *memUsersDB) AddOne(Name, Password string) *User {
 		TicketProofs: make(map[string]string),
 	}
 	m.users[Name] = u
+	m.usersID[u.UID] = u
 	return u
 }
 
@@ -55,8 +69,11 @@ func (m *memUsersDB) AddAdmin(Name, Password string) *User {
 		Password:     Password,
 		TicketProofs: make(map[string]string),
 	}
-	GlobalAuthManager.Push(NewTopTicket(admin.UID))
+	t := NewTopTicket(admin.UID)
+	GlobalAuthManager.Push(t)
+	admin.TakeTicket(admin, t)
 
 	m.users[Name] = admin
+	m.usersID[admin.UID] = admin
 	return admin
 }
