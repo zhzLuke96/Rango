@@ -16,13 +16,15 @@ import (
 // LogRequest print a request status
 func LogRequest(w core.ResponseWriteBody, r *http.Request, next func()) {
 	t := time.Now()
+	method := r.Method
+	url := r.URL.String()
 	next()
 	log.Printf("%v %v %.1fms\t%v byte\t%v",
 		w.StatusCode(),
-		r.Method,
+		method,
 		time.Now().Sub(t).Seconds()*1000,
 		w.ContentLength(),
-		r.URL.String(),
+		url,
 	)
 }
 

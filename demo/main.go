@@ -15,8 +15,8 @@ import (
 func main() {
 	var demoNum int
 	var port string
-	flag.IntVar(&demoNum, "demo", 2, "choose demo.")
-	flag.IntVar(&demoNum, "d", 2, "choose demo.")
+	flag.IntVar(&demoNum, "demo", 0, "choose demo.")
+	flag.IntVar(&demoNum, "d", 0, "choose demo.")
 
 	flag.StringVar(&port, "port", "8080", "server port.")
 	flag.StringVar(&port, "p", "8080", "server port.")
@@ -58,7 +58,7 @@ func CustomSev(port string) {
 	sev.Use(mid.ErrCatch)
 	// sev.Use(session.mid)
 	sev.Use(router.Mid)
-	router.Handler("/home/", http.StripPrefix("/home/", http.FileServer(http.Dir("./www"))))
+	router.Handler("/home", http.StripPrefix("/home", http.FileServer(http.Dir("./www"))))
 	// sev.Use(mid.Log, mid.ErrCAtch, session.mid, router.mid)
 
 	sev.Go(port)
