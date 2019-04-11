@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"time"
 
-	core "./Core"
-	mid "./Mid"
-	"./Router"
+	"./core"
+	"./mid"
+	"./router"
 )
 
 func newDefaultSev(port string) (*http.Server, *core.RangoSevHandler) {
@@ -25,8 +25,8 @@ func SimpleGo(port string) error {
 	return sev.ListenAndServe()
 }
 
-func NewRouter() *Router.Router {
-	return &Router.Router{}
+func NewRouter() *router.Router {
+	return &router.Router{}
 }
 
 func NewSev() *core.RangoSevHandler {

@@ -1,10 +1,10 @@
-package Router
+package router
 
 import (
 	"net/http"
 	"strings"
 
-	core "../Core"
+	"../core"
 )
 
 type Route struct {

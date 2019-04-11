@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	core "../Core"
+	"../core"
 	"../utils"
 )
 

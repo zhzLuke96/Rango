@@ -1,7 +1,7 @@
-package Router
+package router
 
 import "net/http"
-import core "../Core"
+import "../core"
 
 type Router struct {
 	routes []*Route

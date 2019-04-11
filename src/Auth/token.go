@@ -1,4 +1,4 @@
-package Auth
+package auth
 
 import (
 	"encoding/json"
@@ -17,12 +17,13 @@ type Token struct {
 }
 
 func NewToken(dur time.Duration, uname string) *Token {
+	pass, _ := GlobalManager.DB.QueryUserPasser(uname)
 	return &Token{
 		Expires:        time.Now().Add(dur),
 		IssuedAt:       time.Now(),
 		TargetUserName: uname,
 		Salt:           utils.RandStr(10),
-		Passd:          GlobalAuthManager.Query(GlobalUsers.GetUser(uname)),
+		Passd:          pass,
 	}
 }
 

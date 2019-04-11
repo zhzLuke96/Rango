@@ -1,8 +1,23 @@
-package Auth
+package auth
 
 import "strings"
 
 type CRUD int8
+
+func methodToCRUD(method string) CRUD {
+	switch strings.ToLower(method) {
+	case "post":
+		return 1 << 3
+	case "get":
+		return 1 << 2
+	case "updata":
+		return 1 << 1
+	case "delete":
+		return 1
+	default:
+		return 0
+	}
+}
 
 // 0b1111 CRUD
 // 0b1000 post
@@ -45,6 +60,13 @@ func newCRUD(C, R, U, D bool) (auth CRUD) {
 
 func mergeCRUD(authA, authB CRUD) CRUD {
 	return authA | authB
+}
+
+func (c *CRUD) CanCover(a CRUD) bool {
+	if *c > 15 {
+		return true
+	}
+	return (*c & a) != 0
 }
 
 func (c *CRUD) Toggle(C, R, U, D bool) {

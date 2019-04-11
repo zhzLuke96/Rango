@@ -1,22 +1,23 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
 	"time"
 
 	Rango "../src"
-	"../src/Auth"
-	rangoKit "../src/Core"
-	mid "../src/Mid"
+	"../src/auth"
+	rangoKit "../src/core"
+	"../src/mid"
 )
 
 func main() {
 	var demoNum int
 	var port string
-	flag.IntVar(&demoNum, "demo", 0, "choose demo.")
-	flag.IntVar(&demoNum, "d", 0, "choose demo.")
+	flag.IntVar(&demoNum, "demo", 2, "choose demo.")
+	flag.IntVar(&demoNum, "d", 2, "choose demo.")
 
 	flag.StringVar(&port, "port", "8080", "server port.")
 	flag.StringVar(&port, "p", "8080", "server port.")
@@ -75,24 +76,28 @@ func TokenAuthSev(port string) {
 
 	router.Registe(map[string]http.Handler{
 		"/CMS/":     CMSHandler,
-		"/login/":   rangoKit.HandlerFunc(Auth.GlobalAuthManager.LoginHandler),
-		"/registr/": rangoKit.HandlerFunc(Auth.GlobalAuthManager.RegisteHandler),
-		"/ticket/":  rangoKit.HandlerFunc(Auth.GlobalAuthManager.TicketHandler),
+		"/login/":   rangoKit.HandlerFunc(auth.GlobalManager.LoginHandler),
+		"/registr/": rangoKit.HandlerFunc(auth.GlobalManager.RegisteHandler),
+		"/ticket/":  rangoKit.HandlerFunc(auth.GlobalManager.TicketHandler),
 		"/clear/":   rangoKit.HandlerFunc(clearCookie),
+		"/sysuser/": rangoKit.HandlerFunc(func(w rangoKit.ResponseWriteBody, r *http.Request) {
+			body, _ := json.Marshal(auth.GlobalManager.SystemUser())
+			w.Write(body)
+		}),
 	})
 	router.Handler("/", http.FileServer(http.Dir("./www")))
 
 	subRouter := Rango.NewRouter()
 	CMSHandler.Use(mid.StripPrefix("/CMS"))
-	CMSHandler.Use(Auth.GlobalAuthManager.Mid)
+	CMSHandler.Use(auth.GlobalManager.Mid)
 	CMSHandler.Use(subRouter.Mid)
 
 	subRouter.Registe(map[string]http.Handler{
 		"/": http.FileServer(http.Dir("./zone")),
 	})
 
-	Auth.DefaultAuthInit()
-	Auth.GlobalUsers.AddOne("user1", "123456")
+	auth.DefaultAuthInit()
+	auth.GlobalManager.DB.RegisteUser(auth.NewUser("user1", "", "123456"))
 
 	sev.Go(port)
 }

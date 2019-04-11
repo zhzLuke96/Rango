@@ -20,3 +20,6 @@
 
 # vscode config
 /.vscode
+
+# old code file
+_*.go
