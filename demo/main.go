@@ -11,6 +11,7 @@ import (
 	"../src/auth"
 	rangoKit "../src/core"
 	"../src/mid"
+	RangoRouter "../src/router"
 )
 
 func main() {
@@ -82,6 +83,10 @@ func TokenAuthSev(port string) {
 		"/clear/":   rangoKit.HandlerFunc(clearCookie),
 		"/sysuser/": rangoKit.HandlerFunc(func(w rangoKit.ResponseWriteBody, r *http.Request) {
 			body, _ := json.Marshal(auth.GlobalManager.SystemUser())
+			w.Write(body)
+		}),
+		"/router/{id:[0-9]+}/{name}": rangoKit.HandlerFunc(func(w rangoKit.ResponseWriteBody, r *http.Request) {
+			body, _ := json.Marshal(RangoRouter.Vars(r))
 			w.Write(body)
 		}),
 	})

@@ -13,6 +13,8 @@
 
 # demo web site
 /demo/www
+/dome/zone
+/demo/**/*.html
 
 # build file
 *.o

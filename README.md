@@ -64,7 +64,7 @@ func TokenAuthSev(port string) {
 ```
 
 # todo
-- [ ] router VarN
+- [x] router VarN
 - [x] auth DB factory
 - [ ] sessionVar
 - [ ] more demo

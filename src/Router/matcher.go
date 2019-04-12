@@ -37,11 +37,23 @@ func (m methodMatcher) Match(r *http.Request) bool {
 type pathMatcher struct {
 	Template string
 	Regexp   regexp.Regexp
-	VarsN    []string
 }
 
 func (p *pathMatcher) Match(r *http.Request) bool {
-	return p.Regexp.MatchString(r.URL.Path)
+	pth := r.URL.Path
+	matchArr := p.Regexp.FindStringSubmatch(pth)
+	if len(matchArr) != 0 {
+		vars := make(map[string]string)
+		groupNames := p.Regexp.SubexpNames()
+		for i, k := range groupNames {
+			if i != 0 && k != "" {
+				vars[k] = matchArr[i]
+			}
+		}
+		*r = *setVars(r, vars)
+		return true
+	}
+	return false
 }
 
 func NewPathMatcher(tpl string, strictSlash bool) *pathMatcher {
@@ -50,7 +62,6 @@ func NewPathMatcher(tpl string, strictSlash bool) *pathMatcher {
 	template := tpl
 	defaultPattern := "[^/]+"
 
-	varsN := make([]string, len(idxs)/2)
 	var end int
 	pattern := bytes.NewBufferString("")
 	for i := 0; i < len(idxs); i += 2 {
@@ -63,8 +74,7 @@ func NewPathMatcher(tpl string, strictSlash bool) *pathMatcher {
 			patt = parts[1]
 		}
 
-		fmt.Fprintf(pattern, "%s(%s)", regexp.QuoteMeta(raw), patt)
-		varsN[i/2] = name
+		fmt.Fprintf(pattern, "%s(?P<%s>%s)", regexp.QuoteMeta(raw), name, patt)
 	}
 
 	raw := tpl[end:]
@@ -77,7 +87,6 @@ func NewPathMatcher(tpl string, strictSlash bool) *pathMatcher {
 	return &pathMatcher{
 		Template: template,
 		Regexp:   *reg,
-		VarsN:    varsN,
 	}
 }
 
