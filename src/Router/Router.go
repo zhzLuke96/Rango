@@ -8,6 +8,7 @@ type Router struct {
 }
 
 type HandleFunc func(http.ResponseWriter, *http.Request)
+type RangoHandleFunc func(w core.ResponseWriteBody, r *http.Request)
 
 // Match matches registered routes against the request.
 func (r *Router) Match(req *http.Request, h *core.RangoSevHandler) bool {
@@ -44,6 +45,10 @@ func (r *Router) HandleFunc(pathTpl string, fn HandleFunc) *Route {
 	route.Path(pathTpl)
 	r.routes = append(r.routes, route)
 	return route
+}
+
+func (r *Router) RangoFunc(pathTpl string, fn RangoHandleFunc) *Route {
+	return r.Handler(pathTpl, core.HandlerFunc(fn))
 }
 
 func (r *Router) Handler(pathTpl string, handler http.Handler) *Route {
