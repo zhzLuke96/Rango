@@ -82,80 +82,15 @@ func (r ReqVars) GetDefault(key string, defaultValue interface{}) interface{} {
 	return defaultValue
 }
 
-type rResponse struct {
-	Status  string `json:"status"`
-	Code    int    `json:"code"`
-	Message string `json:"msg"`
-	Token   string `json:"token"`
-
-	Data interface{} `json:"data"` // 数据
-	Meta interface{} `json:"meta"` // pagebar navbar
-}
-
-func NewEmptyResponse() *rResponse {
-	return &rResponse{
-		Code:    1,
-		Status:  httpCodeText(200),
-		Message: "success",
-		Token:   "null",
-	}
-}
-
-func NewResponse(data interface{}) *rResponse {
-	resp := NewEmptyResponse()
-	resp.Data = data
-	return resp
-}
-
-func (r *rResponse) JSON() []byte {
-	ret, err := json.Marshal(r)
-	if err == nil {
-		return ret
-	}
-	return nil
-}
-
-type errResponse struct {
-	httpStatusCode int
-
-	Code    int           `json:"error_code"`
-	Error   string        `json:"error"`
-	Message string        `json:"message"`
-	Debug   []interface{} `json:"debug"`
-}
-
-func NewErrResp(code int, err, msg string) *errResponse {
-	return &errResponse{
-		Code:    code,
-		Error:   err,
-		Message: msg,
-		Debug:   getDebugStackArr(),
-	}
-}
-
-func (e *errResponse) JSON() []byte {
-	ret, err := json.MarshalIndent(e, "", "  ")
-	if err == nil {
-		return ret
-	}
-	return nil
-}
-
-type rHFunc func(ReqVars) []byte
+type rHFunc func(ReqVars) interface{}
 
 func (r rHFunc) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	var respBytes []byte
-	stateCode := 200
 	vars, err := newReqVars(req)
 	if err != nil {
-		stateCode = 400
-		respBytes = NewErrResp(1000, err.Error(), systemError).JSON()
-	} else {
-		respBytes = r(*vars)
+		errResp := rHFuncResponser.NewErrResponse()
+		errResp.Push(w, 400, "Error parsing request body", err)
+		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(respBytes)
-	if stateCode != 200 {
-		w.WriteHeader(stateCode)
-	}
+	resp := rHFuncResponser.NewResponse()
+	resp.Push(w, 200, "success", r(*vars))
 }

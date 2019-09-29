@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -11,7 +13,64 @@ import (
 
 func main() {
 	rango.DebugOn()
-	run(":8080")
+	sev := initServer()
+	// Runing Server
+	sev.Start(":8080")
+}
+
+func initServer() *rango.RangoSev {
+	sev := rango.New("demo")
+
+	// rango Func example
+	// use custom matcher
+	// set before-route.middleware
+	sev.Func("/add", func(vars rango.ReqVars) interface{} {
+		numa := vars.GetDefault("a", 1)
+		numb := vars.GetDefault("b", 1)
+		res := toInt(numb) + toInt(numa)
+		// return []byte(fmt.Sprintf("<h1>%v+%v=%v</h1>", numa, numb, res))
+		return res
+	}).AddMatcher(newThrottleMatcher(5000)).Before(func(w http.ResponseWriter, r *http.Request) bool {
+		w.Write([]byte("Add tool is closed now."))
+		w.WriteHeader(500)
+		return false
+	})
+
+	// upload handler
+	// route, handler := sev.Upload(...)
+	_, uploadHandler := sev.Upload("/upload", "./imgs", 10*1024, []string{"image"})
+	uploadHandler.Failed(func(code int, err error, msg string, w http.ResponseWriter) {
+		rango.DefaultFailed(code, err, msg, w)
+		fmt.Printf("[LOG] code, msg = %v, %v\n", code, msg)
+	}).After(func(fileBytes []byte, pth string) (error, interface{}) {
+		err := rango.SaveFile(fileBytes, pth)
+		_, filename := filepath.Split(pth)
+		return err, map[string]string{
+			"url": "/image/" + filename,
+		}
+	})
+
+	// Group routing
+	apiGroup := sev.Group("/api")
+	apiGroup.Func("/user/{id:\\d+}", func(vars rango.ReqVars) interface{} {
+		userID := rango.GetConf("userPrefix", "").(string) + "_" + vars.GetDefault("id", "null").(string)
+		return userID
+	})
+
+	// HATEOAS
+	hateoas := rango.NewRHateoas("**HATEOAS**", "In progress")
+	hateoas.Add("add tool", "/add?a={a}&b={b}", "add number a and number b", []string{"GET", "POST"})
+	// map url [/api/] to hateoas serveHTTP
+	apiGroup.Handle("/", hateoas)
+
+	// map [/api] to static file
+	apiGroup.File("", "./api_README.md")
+
+	// set Static folder
+	sev.Static("/image", "./imgs")
+	sev.Static("/", "./www")
+
+	return sev
 }
 
 func toInt(i interface{}) int {
@@ -49,62 +108,3 @@ func (t *throttleMatcher) Match(r *http.Request) bool {
 	}
 	return false
 }
-
-func run(port string) {
-	sev := rango.New("demo")
-	sev.Func("/add", func(vars rango.ReqVars) []byte {
-		numa := vars.GetDefault("a", 1)
-		numb := vars.GetDefault("b", 1)
-		res := toInt(numb) + toInt(numa)
-		// return []byte(fmt.Sprintf("<h1>%v+%v=%v</h1>", numa, numb, res))
-		return rango.NewResponse(res).JSON()
-	}).AddMatcher(newThrottleMatcher(5000)).Before(func(w http.ResponseWriter, r *http.Request) bool {
-		w.Write([]byte("this tool closed."))
-		w.WriteHeader(500)
-		return false
-	})
-
-	apiGroup := sev.Group("/api")
-	apiGroup.Func("/user/{id:\\d+}", func(vars rango.ReqVars) []byte {
-		userID := rango.GetConf("userPrefix", "").(string) + "_" + vars.GetDefault("id", "null").(string)
-		return rango.NewResponse(userID).JSON()
-	})
-
-	// HATEOAS
-	hateoas := rango.NewRHateoas("**HATEOAS**", "In progress")
-	hateoas.Add("add tool", "/add?a={a}&b={b}", "add number a and number b", []string{"GET", "POST"})
-	apiGroup.Handle("/", hateoas)
-	apiGroup.File("", "./api_README.md")
-
-	sev.Static("/", "./www")
-	sev.Start(port)
-}
-
-// func run(port string) {
-// 	sev := rango.NewSev()
-// 	router := rango.NewRouter()
-// 	hateoas := rango.NewRHateoas("**HATEOAS**", "In progress")
-
-// 	sev.Use(rango.LogRequestMid)
-// 	sev.Use(rango.ErrCatchMid)
-// 	sev.Use(router.Mid)
-
-// 	router.Handler("/home", http.StripPrefix("/home", http.FileServer(http.Dir("./www"))))
-
-// router.RangoFunc("/add/{a:\\d+}:{b:\\d+}", rango.Handler(func(vars rango.ReqVars) []byte {
-// 	numa := vars.GetDefault("a", 1)
-// 	numb := vars.GetDefault("b", 1)
-// 	res := toInt(numb) + toInt(numa)
-// 	// return []byte(fmt.Sprintf("<h1>%v+%v=%v</h1>", numa, numb, res))
-// 	return rango.NewResponse(res).JSON()
-// })).AddMatcher(newThrottleMatcher(5000))
-
-// 	hateoas.AppendURL("/add/{a}:{b}", "ALL", "add number a and number b")
-// 	router.RangoFunc("/apis", hateoas.HandleFunc)
-
-// 	router.RangoFunc("/error", rango.Handler(func(_ rango.ReqVars) []byte {
-// 		return rango.NewErrResp(404001, "error some", "worng.").JSON()
-// 	}))
-
-// 	sev.Go(port)
-// }

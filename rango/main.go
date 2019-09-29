@@ -15,17 +15,17 @@ func SimpleGo(port string) error {
 	return sev.Start(port)
 }
 
-type rangoSev struct {
+type RangoSev struct {
 	Name    string
 	Router  *Router
 	Handler *SevHandler
 }
 
-func New(name string) *rangoSev {
+func New(name string) *RangoSev {
 	if name == "" {
 		name = randStr(10)
 	}
-	sev := &rangoSev{
+	sev := &RangoSev{
 		Name:    name,
 		Router:  NewRouter(),
 		Handler: NewSevHandler(),
@@ -37,44 +37,50 @@ func New(name string) *rangoSev {
 	return sev
 }
 
-func NewSev(name string) *rangoSev {
+func NewSev(name string) *RangoSev {
 	if name == "" {
 		name = randStr(10)
 	}
-	return &rangoSev{
+	return &RangoSev{
 		Name:    name,
 		Router:  NewRouter(),
 		Handler: NewSevHandler(),
 	}
 }
 
-func (r *rangoSev) Func(routerPthTpl string, fn rHFunc) *Route {
+func (r *RangoSev) Func(routerPthTpl string, fn rHFunc) *Route {
 	return r.Router.Func(fn).Path(routerPthTpl)
 }
 
-func (r *rangoSev) Handle(routerPthTpl string, handler http.Handler) *Route {
+func (r *RangoSev) Handle(routerPthTpl string, handler http.Handler) *Route {
 	return r.Router.Handle(handler).Path(routerPthTpl)
 }
 
-func (r *rangoSev) Static(routerPath, dirPth string) *Route {
+func (r *RangoSev) Static(routerPath, dirPth string) *Route {
 	dir := http.Dir(dirPth)
 	fs := http.FileServer(dir)
+	fs = http.StripPrefix(routerPath, fs)
 	return r.Router.Handle(fs).PathMatch(routerPath, true)
 }
 
-func (r *rangoSev) File(routerPath, filePth string) *Route {
+func (r *RangoSev) File(routerPath, filePth string) *Route {
 	return r.Router.Handle(fileServer(filePth)).Path(routerPath)
 }
 
-func (r *rangoSev) GET(routerPthTpl string, fn rHFunc) *Route {
+func (r *RangoSev) Upload(routerPath, dir string, maxsize int64, accept []string) (*Route, *uploadServer) {
+	sev := newUploadServer(dir, maxsize, accept)
+	return r.Router.Handle(sev).Path(routerPath), sev
+}
+
+func (r *RangoSev) GET(routerPthTpl string, fn rHFunc) *Route {
 	return r.Func(routerPthTpl, fn).Methods("GET")
 }
 
-func (r *rangoSev) POST(routerPthTpl string, fn rHFunc) *Route {
+func (r *RangoSev) POST(routerPthTpl string, fn rHFunc) *Route {
 	return r.Func(routerPthTpl, fn).Methods("POST")
 }
 
-func (r *rangoSev) Group(routerPthTpl string) *rangoSev {
+func (r *RangoSev) Group(routerPthTpl string) *RangoSev {
 	// [TODO] 应该支持带有参数的分组
 	// 对于匹配到的参数，将作为vars设置到request之上
 	// eg.
@@ -91,24 +97,24 @@ func (r *rangoSev) Group(routerPthTpl string) *rangoSev {
 	return subSev
 }
 
-func (r *rangoSev) StartServer(sev *http.Server) error {
+func (r *RangoSev) StartServer(sev *http.Server) error {
 	return r.Handler.StartServer(sev)
 }
 
-func (r *rangoSev) StartServerTLS(sev *http.Server, certFile, keyFile string) error {
+func (r *RangoSev) StartServerTLS(sev *http.Server, certFile, keyFile string) error {
 	return r.Handler.StartServerTLS(sev, certFile, keyFile)
 }
 
-func (r *rangoSev) Start(port string) error {
+func (r *RangoSev) Start(port string) error {
 	return r.Handler.Start(port)
 }
 
-func (r *rangoSev) Use(funcs ...MiddlewareFunc) *rangoSev {
+func (r *RangoSev) Use(funcs ...MiddlewareFunc) *RangoSev {
 	r.Handler.Use(funcs...)
 	return r
 }
 
-func (r *rangoSev) UseBefore(funcs ...MiddlewareFunc) *rangoSev {
+func (r *RangoSev) UseBefore(funcs ...MiddlewareFunc) *RangoSev {
 	r.Handler.UseBefore(funcs...)
 	return r
 }

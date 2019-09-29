@@ -1,14 +1,18 @@
 package rango
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
 	"math/rand"
 	"mime"
 	"net/http"
+	"os"
 	"path/filepath"
 	"regexp"
 	"runtime/debug"
+	"strings"
 	"time"
 )
 
@@ -83,4 +87,57 @@ func mustReadJSONFile(filenames ...string) (map[string]interface{}, string) {
 
 func contentType(filePth string) string {
 	return mime.TypeByExtension(filepath.Ext(filePth))
+}
+
+func sliceIndexPrefix(s []string, value string) int {
+	if len(s) == 0 {
+		return -1
+	}
+	value = strings.ToLower(value)
+	for i, v := range s {
+		if strings.HasPrefix(value, v) {
+			return i
+		}
+	}
+	return -1
+}
+
+func SaveFile(fb []byte, pth string) error {
+	if exist, _ := pathExists(pth); exist {
+		return nil
+	}
+	newFile, err := os.Create(pth)
+	if err != nil {
+		return err
+	}
+	defer newFile.Close()
+	if _, err := newFile.Write(fb); err != nil {
+		return err
+	}
+	return nil
+}
+
+func pathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
+
+func fileMD5(file []byte) string {
+	md5 := md5.New()
+	md5.Write(file)
+	return hex.EncodeToString(md5.Sum(nil))
+}
+
+func strOffset(t string, max int) int {
+	sum := 0
+	for _, c := range t {
+		sum += int(c)
+	}
+	return sum % max
 }

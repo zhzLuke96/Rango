@@ -9,6 +9,8 @@ const (
 	simpleServerName = "simple file server"
 	systemError      = "Error occurred in the system. Please repeat it later."
 
+	responseIdxMAX = 1000
+
 	// Deprecated
 	// ----------
 	// SissionMid used
@@ -17,4 +19,10 @@ const (
 
 var (
 	configFoundList = []string{"./config.json", "~/config.json", "/config.json"}
+
+	uploadResponser   = NewResponser("uploadServer")
+	rHFuncResponser   = NewResponser("rangoHandlerFunction")
+	errCatchResponser = NewResponser("ErrCatchMid")
+	notFoundResponser = NewResponser("notFound")
+	// hateoasResponser = NewResponser("HATEOAS")
 )

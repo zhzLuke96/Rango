@@ -37,7 +37,7 @@ func ErrCatchMid(w ResponseWriteBody, r *http.Request, next func()) {
 	next()
 	if w.StatusCode() >= 400 {
 		if w.ContentLength() == 0 {
-			w.Write([]byte(http.StatusText(w.StatusCode())))
+			errCatchResponser.NewErrResponse().Push(w, w.StatusCode(), "Unknown Error Catched", nil)
 		}
 	}
 }

@@ -24,7 +24,8 @@ func (r *Router) Match(req *http.Request, rte *Route) bool {
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var route Route
 	if !r.Match(req, &route) {
-		http.NotFoundHandler().ServeHTTP(w, req)
+		// http.NotFoundHandler().ServeHTTP(w, req)
+		notFoundResponser.NewErrResponse().Push(w, 404, "Not Found", nil)
 		return
 	}
 	if route.BeforeH != nil && !route.BeforeH(w, req) {
