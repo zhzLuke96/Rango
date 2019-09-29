@@ -19,6 +19,8 @@ type RangoSev struct {
 	Name    string
 	Router  *Router
 	Handler *SevHandler
+
+	groups []*RangoSev
 }
 
 func New(name string) *RangoSev {
@@ -103,6 +105,8 @@ func (r *RangoSev) Group(routerPthTpl string) *RangoSev {
 	subSev.Use(subSev.Router.Mid)
 
 	r.Router.Handle(subSev.Handler).PathMatch(routerPthTpl, false)
+
+	r.groups = append(r.groups, subSev)
 	return subSev
 }
 
@@ -126,4 +130,23 @@ func (r *RangoSev) Use(funcs ...MiddlewareFunc) *RangoSev {
 func (r *RangoSev) UseBefore(funcs ...MiddlewareFunc) *RangoSev {
 	r.Handler.UseBefore(funcs...)
 	return r
+}
+
+func (r *RangoSev) Sort() {
+	r.Router.Sort()
+	for _, g := range r.groups {
+		g.Router.Sort()
+	}
+}
+
+func (r *RangoSev) IsSorted() bool {
+	if !r.Router.IsSorted() {
+		return false
+	}
+	for _, g := range r.groups {
+		if !g.Router.IsSorted() {
+			return false
+		}
+	}
+	return true
 }

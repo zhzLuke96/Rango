@@ -67,8 +67,10 @@ func initServer() *rango.RangoSev {
 	apiGroup.File("", "./api_README.md")
 
 	// set Static folder
-	sev.Static("/image", "./imgs")
 	sev.Static("/", "./www")
+	sev.Static("/image", "./imgs")
+
+	sev.Sort()
 
 	return sev
 }

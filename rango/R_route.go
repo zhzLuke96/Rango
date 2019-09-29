@@ -12,6 +12,7 @@ type Route struct {
 	BeforeH hookFunc
 	AfterH  hookFunc
 	Handler http.Handler
+	PathTpl string
 	// List of matchers.
 	matchers []matcher
 	err      error
@@ -68,6 +69,7 @@ func isRouterRegexp(tpl string) bool {
 
 // 设置path路由
 func (r *Route) Path(tpl string) *Route {
+	r.PathTpl = tpl
 	if isRouterRegexp(tpl) {
 		return r.PathMatch(tpl, false)
 	}
@@ -83,5 +85,6 @@ func (r *Route) Path(tpl string) *Route {
 // 则只匹配 host/user
 
 func (r *Route) PathMatch(tpl string, strictSlash bool) *Route {
+	r.PathTpl = tpl
 	return r.AddMatcher(newPathMatcher(tpl, strictSlash))
 }
