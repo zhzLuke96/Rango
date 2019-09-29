@@ -11,7 +11,7 @@ import (
 
 func main() {
 	rango.DebugOn()
-	run("8080")
+	run(":8080")
 }
 
 func toInt(i interface{}) int {
