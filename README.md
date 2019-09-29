@@ -45,14 +45,8 @@ $> curl -H "Content-Type:application/json" -X POST --data '{"name": "luke96"}' 1
 project in `example` folder list all `rango.functions` and common usage to help users get started quickly.
 
 # Changelog
-- 添加responser类，根据信息生成消息code
-- 增加upload支持，通过sev.Upload创建上传服务器
-- 修改ErrCatch中间件统一回复格式
-- 修改Router中间件行为统一回复格式
-- 修改rango.Func返回值为interface{}
-- 增加非正则path matcher，自动识别，对于不符合的match设置将构建Regexp对象
-- 修改HATEOAS为GitHub风格
-- 修复static没有StripPrefix的bug
+- 添加文件系统不显示目录列表的设置，默认是不显示
+- 添加fs.go，修改http.FileServer默认行为
 
 # Todo
 - [x] updata .08h

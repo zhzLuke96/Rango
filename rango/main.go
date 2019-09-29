@@ -57,8 +57,17 @@ func (r *RangoSev) Handle(routerPthTpl string, handler http.Handler) *Route {
 }
 
 func (r *RangoSev) Static(routerPath, dirPth string) *Route {
-	dir := http.Dir(dirPth)
-	fs := http.FileServer(dir)
+	return r.StaticDir(routerPath, dirPth, true)
+}
+
+func (r *RangoSev) StaticDir(routerPath, dirPth string, justFiles bool) *Route {
+	var fs http.Handler
+	if justFiles {
+		fs = newJustFilesFS(dirPth, 2)
+	} else {
+		dir := http.Dir(dirPth)
+		fs = http.FileServer(dir)
+	}
 	fs = http.StripPrefix(routerPath, fs)
 	return r.Router.Handle(fs).PathMatch(routerPath, true)
 }
