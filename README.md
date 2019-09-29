@@ -1,74 +1,58 @@
-# Rango
-http web kit
+# rango
+minimalist Go http server framework
 
-# exmple
+> It's like [Echo](https://github.com/labstack/echo), but it's sweeter ~~(fake)~~
+
+# Overview
+总是会有些小想法想动手玩玩，别的库虽然是好又是高性能又是有社区，但是始终有点不适，于是写这个解决一系列的小问题
+
+> 值得注意的是，在默认的函数处理中，将认为所有的body中都是json数据<br>
+> 当然也对其他特殊格式进行支持(come soon...)
+
+# Hello world
 ```golang
-func CustomSev(port string) {
-	sev := Rango.NewSev()
-    router := Rango.NewRouter()
-    
-	sev.Use(mid.LogRequest)
-    sev.Use(mid.ErrCatch)
-    sev.Use(router.Mid)
-    
-    router.Handler("/home/",
-        http.StripPrefix("/home/",
-            http.FileServer(
-                    http.Dir("./www")
-                    )
-                )
-            ).Methods("get")
+package main
 
-	sev.Go(port)
+import (
+  "net/http"
+  "github.com/zhzLuke96/Rango/rango"
+)
+
+func main() {
+  sev := rango.New("hello")
+  sev.Func("/", hello)
+  sev.Start(":8080")
+}
+
+func hello(vars rango.ReqVars) []byte {
+  return []byte("hello " + vars.GetDefault("name", "world") + " !")
 }
 ```
 
-Router Interceptor or filter
-```golang
-func TokenAuthSev(port string) {
-	sev := Rango.NewSev()
-	router := Rango.NewRouter()
-	CMSHandler := Rango.NewSev()
-
-	sev.Use(mid.LogRequest)
-	sev.Use(mid.ErrCatch)
-	sev.Use(router.Mid)
-
-	router.Registe(map[string]http.Handler{
-		"/CMS/":     CMSHandler,
-		"/login/":   rangoKit.HandlerFunc(auth.GlobalManager.LoginHandler),
-		"/registr/": rangoKit.HandlerFunc(auth.GlobalManager.RegisteHandler),
-		"/ticket/":  rangoKit.HandlerFunc(auth.GlobalManager.TicketHandler),
-		"/clear/":   rangoKit.HandlerFunc(clearCookie),
-		"/sysuser/": rangoKit.HandlerFunc(func(w rangoKit.ResponseWriteBody, r *http.Request) {
-			body, _ := json.Marshal(auth.GlobalManager.SystemUser())
-			w.Write(body)
-		}),
-	})
-	router.Handler("/", http.FileServer(http.Dir("./www")))
-
-	subRouter := Rango.NewRouter()
-	CMSHandler.Use(mid.StripPrefix("/CMS"))
-	CMSHandler.Use(auth.GlobalManager.Mid)
-	CMSHandler.Use(subRouter.Mid)
-
-	subRouter.Registe(map[string]http.Handler{
-		"/": http.FileServer(http.Dir("./zone")),
-	})
-
-	auth.DefaultAuthInit()
-	auth.GlobalManager.DB.RegisteUser(auth.NewUser("user1", "", "123456"))
-
-	sev.Go(port)
-}
+GET:
+```
+$> curl 127.0.0.1:8080/?name=luke96
+hello luke96 !
 ```
 
-# todo
-- [x] router VarN
-- [x] auth DB factory
-- [ ] sessionVar
-- [ ] more demo
-- [ ] CLI
+POST:
+```
+$> curl -H "Content-Type:application/json" -X POST --data '{"name": "luke96"}' 127.0.0.1:8080/
+hello luke96 !
+```
+
+# Example
+project in `example` folder list all `rango.functions` and common usage to help users get started quickly.
+
+# Todo
+- [x] updata .08h
+- [ ] finish guide.md
+- [ ] file upload handler
+- [ ] BLOB stream
+- [ ] RPC function
+- [ ] add more test.go
+- [ ] add more comment
+- [ ] example on docker
 - [ ] ...
 
 # LICENSE

@@ -1,0 +1,10 @@
+{
+    "forceLoad": true,
+    "Debug": false,
+    "mongoDB": {
+        "user": "admin",
+        "password": "admin",
+        "url": "127.0.0.1:27017"
+    },
+    "userPrefix": "admin"
+}
