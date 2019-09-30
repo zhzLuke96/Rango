@@ -40,9 +40,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (r *Router) Mid(w ResponseWriteBody, req *http.Request, next func()) {
+func (r *Router) Mid(w ResponseWriteBody, req *http.Request, next MiddleNextFunc) {
 	r.ServeHTTP(w, req)
-	next()
+	next(w, req)
 }
 
 func (r *Router) Func(fn rHFunc) *Route {
@@ -65,10 +65,6 @@ func (r *Router) Registe(conf map[string]http.Handler) {
 
 // for sort
 
-func routePathLen(r *Route) int {
-	return len(r.PathTpl)
-}
-
 func (r *Router) Sort() {
 	sort.Sort(r)
 }
@@ -82,9 +78,27 @@ func (r *Router) Len() int {
 }
 
 func (r *Router) Less(i, j int) bool {
-	iLen := routePathLen(r.routes[i])
-	jLen := routePathLen(r.routes[j])
-	return iLen > jLen
+	iR := r.routes[i].PathMatcher
+	jR := r.routes[j].PathMatcher
+	if iR == nil || jR == nil {
+		return i > j
+	}
+
+	irmapping := true
+	if _, ok := iR.(*pathMatcher); ok {
+		irmapping = false
+	}
+	jrmapping := true
+	if _, ok := jR.(*pathMatcher); ok {
+		jrmapping = false
+	}
+	if irmapping && jrmapping {
+		return len(iR.(pathMappingMatcher)) > len(jR.(pathMappingMatcher))
+	}
+	if !irmapping && jrmapping {
+		return !iR.(*pathMatcher).Regexp.MatchString(string(jR.(pathMappingMatcher)))
+	}
+	return i > j
 }
 
 func (r *Router) Swap(i, j int) {

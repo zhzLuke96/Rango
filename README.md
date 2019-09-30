@@ -1,6 +1,6 @@
 # rango
 ![LICENSE badge](https://img.shields.io/badge/license-GPL3.0-blue)
-![size badge](https://img.shields.io/badge/line-1.5K-green)
+![size badge](https://img.shields.io/badge/line-1.6K-green)
 
 minimalist Go http server framework
 
@@ -8,17 +8,23 @@ minimalist Go http server framework
 
 
 # Index
-- [Overview](#Overview)
-- [Install](#Install)
-- [Usage](#Usage)
-  - [Hello world](#Hello-world)
-- [Recommend](#Recommend)
-  - [code style](#code-style)
-  - [path cover](#path-cover)
-- [Example](#Example)
-- [Changelog](#Changelog)
-- [Todo](#Todo)
-- [LICENSE](#LICENSE)
+- [rango](#rango)
+- [Index](#index)
+- [Overview](#overview)
+- [Install](#install)
+- [Usage](#usage)
+  - [Hello world](#hello-world)
+- [Example](#example)
+- [Middlewares](#middlewares)
+  - [usage](#usage)
+  - [list](#list)
+- [Matchers](#matchers)
+  - [usage](#usage-1)
+  - [list](#list-1)
+- [Compose](#compose)
+- [Changelog](#changelog)
+- [Todo](#todo)
+- [LICENSE](#license)
 
 # Overview
 总是会有些小想法想动手玩玩，别的库虽然是好又是高性能又是有社区，但是始终有点不适，于是写这个解决一系列的小问题
@@ -67,80 +73,67 @@ $> curl -H "Content-Type:application/json" -X POST --data '{"name": "luke96"}' 1
 {...,data:"hello luke96 !",...}
 ```
 
-# Recommend
-
-## code style
-```golang
-_, uploadHandler := sev.Upload("/upload", "./imgs", 10*1024, []string{"image"})
-uploadHandler.Failed(func(code int, err error, msg string, w http.ResponseWriter) {
-  rango.DefaultFailed(code, err, msg, w)
-  fmt.Printf("[LOG] code, msg = %v, %v\n", code, msg)
-}).After(func(fileBytes []byte, pth string) (error, interface{}) {
-  err := rango.SaveFile(fileBytes, pth)
-  _, filename := filepath.Split(pth)
-  return err, map[string]string{
-    "url": "/image/" + filename,
-  }
-})
-```
-
-上面这个代码来自`example/main.go`中，是可以正常运行，且通过`go-lint`的，但是显而易见的，看上去一团乱麻。所以虽然支持这么写，但是最好还是分开，golang不适合这种风格。
-
-> 并且带来了一个最麻烦的问题，根本没有写注释的位置，这对于维护是很致命的
-
-```golang
-// upload handler setup
-_, uploadHandler := sev.Upload("/upload", "./imgs", 10*1024, []string{"image"})
-uploadHandler.Failed(imageUploadFailed)
-uploadHandler.After(imageUploadAfter)
-```
-
-## path cover
-
-snippet 1
-
-```golang
-sev.Static("/", "./www")
-sev.Static("/image", "./imgs")
-```
-
-snippet 2
-
-```golang
-sev.Static("/image", "./imgs")
-sev.Static("/", "./www")
-```
-
-按正常的逻辑，这乱段代码应该是相同的效果，然而，`snippet 1`其实是没法正常工作的。
-
-> 原因其实在于其内部实现，router内部是以表的形式实现的，在做router匹配的时候将会根据定义顺序遍历，可想而知，`"/"`表示为一个文件夹则，其将匹配所有的URL
-
-其实有很多方法可以避免这个问题，随意定义路由，比如pathMatcher定义在一个`jumpTable`或者`redBlackTree`上。更简单的，在路由映射之前进行简单的预处理，将routes根据path长短进行降序排序。
-
-在rango的实现里选择了后者，提供了排序的方法，将`snippet 1`修改为如下则就可以正常使用。且会递归调用所有子组的Sort。
-
-```golang
-sev.Static("/", "./www")
-sev.Static("/image", "./imgs")
-
-sev.Sort()
-```
-
-> 如果你想实现动态修改路由的行为，则需要在每次modify之后都排序一次
-
 # Example
 project in `example` folder list all `rango.functions` and common usage to help users get started quickly.
 
+# Middlewares
+## usage
+```golang
+mid := NewMid(...)
+sev.Use(mid)
+```
+## list
+| name      | desc                 | example                         | effect                           |
+| --------- | -------------------- | ------------------------------- | -------------------------------- |
+| memCacher | Memory-based caching | `NewMemCacher(60).Mid` | 将body保存在缓存中 超时设置为60s |
+
+# Matchers
+## usage
+```golang
+mat := NewMat(...)
+sev.Func("/", fn).AddMatcher(mat)
+```
+## list
+| name     | desc   | example                              | effect                |
+| -------- | ------ | ------------------------------------ | --------------------- |
+| throttle | 限流器 | `newThrottle(500)` | 500ms内仅回复一个请求 |
+
+
+# Compose
+
+Matcher 常常是结合中间件使用的，可以搭配出更复杂的行为
+
+> 例如 `throttle` 和 `cacher` 同时使用时，首先会判断是否被缓存，如果没缓存才调用接下来的serve，并穿过 `throttle` 决定是否响应。
+
+```golang
+func fn(vars rango.ReqVars)interface{}{...}
+
+func main(){
+  memCacher := middleware.NewMemCacher(10)
+  throttle := matcher.newThrottle(500)
+
+  sev := rango.NewSev()
+
+  sev.Use(memCacher.Mid)
+  sev.Func("/xxxapi", fn).AddMatcher()
+
+  sev.Use(sev.Router.Mid)
+
+  sev.Start(":8080")
+}
+```
+
 # Changelog
-- 修改route对象，增加了pathtpl变量，用于router排序
-- 添加router排序功能，解决路由被覆盖问题
-- 添加RangoSev.Sort，将遍历分组排序所有router
-- 添加RangoSev.IsSorted，判断路由是否全部有序
+- 修改router.Sort支持更多情况 解决包含问题
+- 增加middleware.cache
+- 增加matcher.throrttle
+- 增加ResponseWriteBody.Writer 支持代理模式
+- 增加ResponseWriteBody.Target 支持代理模式
 
 # Todo
 - [x] updata .08h
+- [x] file upload handler
 - [ ] finish guide.md
-- [ ] file upload handler
 - [ ] BLOB stream
 - [ ] RPC function
 - [ ] add more test.go

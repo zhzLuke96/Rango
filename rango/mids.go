@@ -11,11 +11,11 @@ import (
 )
 
 // LogRequest print a request status
-func LogRequestMid(w ResponseWriteBody, r *http.Request, next func()) {
+func LogRequestMid(w ResponseWriteBody, r *http.Request, next MiddleNextFunc) {
 	t := time.Now()
 	method := r.Method
 	url := r.URL.String()
-	next()
+	next(w, r)
 	log.Printf("%v %v %.1fms\t%v byte\t%v",
 		w.StatusCode(),
 		method,
@@ -26,7 +26,7 @@ func LogRequestMid(w ResponseWriteBody, r *http.Request, next func()) {
 }
 
 // ErrCatch catch and recover
-func ErrCatchMid(w ResponseWriteBody, r *http.Request, next func()) {
+func ErrCatchMid(w ResponseWriteBody, r *http.Request, next MiddleNextFunc) {
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Println(err)
@@ -34,7 +34,7 @@ func ErrCatchMid(w ResponseWriteBody, r *http.Request, next func()) {
 			w.WriteHeader(http.StatusInternalServerError) // 500
 		}
 	}()
-	next()
+	next(w, r)
 	if w.StatusCode() >= 400 {
 		if w.ContentLength() == 0 {
 			errCatchResponser.NewErrResponse().Push(w, w.StatusCode(), "Unknown Error Catched", nil)
@@ -43,7 +43,7 @@ func ErrCatchMid(w ResponseWriteBody, r *http.Request, next func()) {
 }
 
 // Sission if request cookies.length == 0 then add a cookie
-func SissionMid(w ResponseWriteBody, r *http.Request, next func()) {
+func SissionMid(w ResponseWriteBody, r *http.Request, next MiddleNextFunc) {
 	if _, err := r.Cookie(sessionCookieName); err != nil {
 		c := new(http.Cookie)
 		c.HttpOnly = true
@@ -53,23 +53,23 @@ func SissionMid(w ResponseWriteBody, r *http.Request, next func()) {
 		c.Path = "/"
 		http.SetCookie(w, c)
 	}
-	next()
+	next(w, r)
 }
 
 func StripPrefixMid(prefix string) MiddlewareFunc {
-	return func(w ResponseWriteBody, r *http.Request, next func()) {
+	return func(w ResponseWriteBody, r *http.Request, next MiddleNextFunc) {
 		if p := strings.TrimPrefix(r.URL.Path, prefix); len(p) < len(r.URL.Path) {
 			newURL := new(url.URL)
 			newURL.Path = p
 			*r.URL = *newURL
 		}
-		next()
+		next(w, r)
 	}
 }
 
 func SignHeader(key, value string) MiddlewareFunc {
-	return func(w ResponseWriteBody, r *http.Request, next func()) {
+	return func(w ResponseWriteBody, r *http.Request, next MiddleNextFunc) {
 		w.Header().Set(key, value)
-		next()
+		next(w, r)
 	}
 }

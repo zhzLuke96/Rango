@@ -13,6 +13,8 @@ import (
 type ResponseWriteBody interface {
 	StatusCode() int
 	ContentLength() int
+	Target(http.ResponseWriter)
+	Writer() http.ResponseWriter
 	http.ResponseWriter
 }
 
@@ -29,6 +31,18 @@ func NewResponseWriter(w http.ResponseWriter) *ResponseWriter {
 	wr.ResponseWriter = w
 	wr.status = 200
 	return wr
+}
+
+func (r *ResponseWriter) Writer() http.ResponseWriter {
+	return r.ResponseWriter
+}
+
+func (r *ResponseWriter) Target(w http.ResponseWriter) {
+	r.ResponseWriter = w
+}
+
+func (r *ResponseWriter) Header() http.Header {
+	return r.ResponseWriter.Header()
 }
 
 // WriteHeader write status code
@@ -54,7 +68,8 @@ func (r *ResponseWriter) ContentLength() int {
 }
 
 // MiddlewareFunc filter type
-type MiddlewareFunc func(ResponseWriteBody, *http.Request, func())
+type MiddleNextFunc func(ResponseWriteBody, *http.Request)
+type MiddlewareFunc func(ResponseWriteBody, *http.Request, MiddleNextFunc)
 
 // SevHandler server struct
 type SevHandler struct {
@@ -74,17 +89,16 @@ func (s *SevHandler) HandleFunc(fn func(http.ResponseWriter, *http.Request)) *Se
 // ServeHTTP for http.Handler interface
 func (s *SevHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	i := 0
-	wr := NewResponseWriter(w)
-	var next func()
-	next = func() {
+	var next MiddleNextFunc
+	next = func(wr ResponseWriteBody, r *http.Request) {
 		if i < len(s.middlewares) {
 			i++
-			s.middlewares[i-1](wr, req, next)
+			s.middlewares[i-1](wr, r, next)
 		} else if s.Handler != nil {
-			s.Handler.ServeHTTP(wr, req)
+			s.Handler.ServeHTTP(wr, r)
 		}
 	}
-	next()
+	next(NewResponseWriter(w), req)
 }
 
 // Use push MiddlewareFunc
@@ -117,11 +131,11 @@ func (r *SevHandler) StartServerTLS(sev *http.Server, certFile, keyFile string) 
 	return sev.ListenAndServeTLS(certFile, keyFile)
 }
 
-type HandlerFunc func(ResponseWriteBody, *http.Request)
+type HandlerFunc func(ResponseWriter, *http.Request)
 
 // ServeHTTP calls f(w, r).
 func (f HandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	f(NewResponseWriter(w), r)
+	f(*NewResponseWriter(w), r)
 }
 
 type fileServer string

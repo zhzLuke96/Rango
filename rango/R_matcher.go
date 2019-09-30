@@ -45,7 +45,7 @@ type pathMatcher struct {
 	Regexp   regexp.Regexp
 }
 
-func (p *pathMatcher) Match(r *http.Request) bool {
+func (p pathMatcher) Match(r *http.Request) bool {
 	pth := r.URL.Path
 	matchArr := p.Regexp.FindStringSubmatch(pth)
 	if len(matchArr) != 0 {

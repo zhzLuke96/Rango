@@ -7,9 +7,12 @@ import (
 	"strconv"
 	"time"
 
+	"../middleware"
 	"../rango"
 	// "../rango/auth"
 )
+
+var memCacher = middleware.NewMemCacher(10)
 
 func main() {
 	rango.DebugOn()
@@ -18,8 +21,22 @@ func main() {
 	sev.Start(":8080")
 }
 
+func newSev(name string) *rango.RangoSev {
+	sev := &rango.RangoSev{
+		Name:    name,
+		Router:  rango.NewRouter(),
+		Handler: rango.NewSevHandler(),
+	}
+	sev.Handler.Use(rango.LogRequestMid)
+	sev.Handler.Use(rango.ErrCatchMid)
+	sev.Handler.Use(rango.SignHeader("server", "rango/"+rango.Version))
+	sev.Handler.Use(memCacher.Mid)
+	sev.Handler.Use(sev.Router.Mid)
+	return sev
+}
+
 func initServer() *rango.RangoSev {
-	sev := rango.New("demo")
+	sev := newSev("demo")
 
 	// rango Func example
 	// use custom matcher
@@ -30,11 +47,7 @@ func initServer() *rango.RangoSev {
 		res := toInt(numb) + toInt(numa)
 		// return []byte(fmt.Sprintf("<h1>%v+%v=%v</h1>", numa, numb, res))
 		return res
-	}).AddMatcher(newThrottleMatcher(5000)).Before(func(w http.ResponseWriter, r *http.Request) bool {
-		w.Write([]byte("Add tool is closed now."))
-		w.WriteHeader(500)
-		return false
-	})
+	}).AddMatcher(newThrottleMatcher(5000))
 
 	// upload handler
 	// route, handler := sev.Upload(...)
