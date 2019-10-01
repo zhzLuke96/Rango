@@ -23,7 +23,7 @@ func reqKey(r *http.Request) string {
 	return bsMD5(append(append(method, url...), body...))
 }
 
-type cacherCallback func() interface{}
+type cacherCallback func() (interface{}, int)
 type cacher interface {
 	Cached(string) bool
 	Cache(string, interface{})
@@ -51,12 +51,12 @@ func NewMemCacher(timeout float64) *memCacher {
 func (m *memCacher) Mid(w rango.ResponseWriteBody, r *http.Request, next rango.MiddleNextFunc) {
 	reqK := reqKey(r)
 
-	resp := m.Get(reqK, func() interface{} {
+	resp := m.Get(reqK, func() (interface{}, int) {
 		// proxy
 		wr := newRespProxyWriter(w.Writer())
 		w.Target(wr)
 		next(w, r)
-		return wr.Body
+		return wr.Body, w.StatusCode()
 	})
 	w.Write(resp.([]byte))
 }
@@ -81,7 +81,9 @@ func (m *memCacher) Get(key string, fn cacherCallback) interface{} {
 	if m.Cached(key) {
 		return m.mems[key].value
 	}
-	newValue := fn()
-	m.Cache(key, newValue)
-	return newValue
+	newValue, code := fn()
+	if code < 400 {
+		m.Cache(key, newValue)
+	}
+	return []byte("")
 }

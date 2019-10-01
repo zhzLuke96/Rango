@@ -31,8 +31,8 @@ func randStr(n int) string {
 
 var stackRe = regexp.MustCompile(`([\w.()*/]+)\(.*?\)\n\t(\S+?):(\d+?) .+`)
 
-func getDebugStackArr() []interface{} {
-	var ret []interface{}
+func getDebugStackArr() []map[string]string {
+	var ret []map[string]string
 	if !isDebugOn() {
 		return ret
 	}
@@ -100,6 +100,15 @@ func sliceIndexPrefix(s []string, value string) int {
 		}
 	}
 	return -1
+}
+
+func sliceHasPrefix(s []string, value string) bool {
+	for _, v := range s {
+		if v == "*" {
+			return true
+		}
+	}
+	return sliceIndexPrefix(s, value) != -1
 }
 
 func SaveFile(fb []byte, pth string) error {

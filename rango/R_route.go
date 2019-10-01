@@ -1,6 +1,7 @@
 package rango
 
 import (
+	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
@@ -88,4 +89,31 @@ func (r *Route) Path(tpl string) *Route {
 func (r *Route) PathMatch(tpl string, strictSlash bool) *Route {
 	r.PathMatcher = newPathMatcher(tpl, strictSlash)
 	return r.AddMatcher(r.PathMatcher.(*pathMatcher))
+}
+
+// util
+
+// checkPairs returns the count of strings passed in, and an error if
+// the count is not an even number.
+func checkPairs(pairs ...string) (int, error) {
+	length := len(pairs)
+	if length%2 != 0 {
+		return length, fmt.Errorf(
+			"rango: number of parameters must be multiple of 2, got %v", pairs)
+	}
+	return length, nil
+}
+
+// mapFromPairsToString converts variadic string parameters to a
+// string to string map.
+func mapFromPairs(pairs ...string) (map[string]string, error) {
+	length, err := checkPairs(pairs...)
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[string]string, length/2)
+	for i := 0; i < length; i += 2 {
+		m[pairs[i]] = pairs[i+1]
+	}
+	return m, nil
 }

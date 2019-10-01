@@ -149,7 +149,15 @@ func (f fileServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	ctype := contentType(string(f))
 	w.Header().Set("Content-Type", ctype)
 	w.Write(data)
-	// w.WriteHeader(200)
+}
+
+type bytesServer func() []byte
+
+func (b bytesServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	respBs := b()
+	filetype := http.DetectContentType(respBs)
+	w.Header().Set("Content-Type", filetype)
+	w.Write(respBs)
 }
 
 func DefaultFailed(statusCode int, err error, msg string, w http.ResponseWriter) {
@@ -178,7 +186,7 @@ func newUploadServer(dir string, maxsize int64, accept []string) *uploadServer {
 		storageDir:    dir,
 		maxUploadSize: maxsize * 1024,
 		acceptType:    accept,
-		allowAll:      sliceIndexPrefix(accept, "*") != -1,
+		allowAll:      sliceHasPrefix(accept, "1234567890qwertyuiop"),
 	}
 }
 
@@ -218,7 +226,7 @@ func (u *uploadServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	filetype := http.DetectContentType(fileBytes)
-	if !u.allowAll && sliceIndexPrefix(u.acceptType, filetype) == -1 {
+	if !u.allowAll && sliceHasPrefix(u.acceptType, filetype) {
 		failedCallback(405, nil, "File Type Not Allowed", w)
 		return
 	}

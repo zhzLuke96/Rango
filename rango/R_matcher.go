@@ -26,8 +26,8 @@ func (m headerMatcher) Match(r *http.Request) bool {
 type methodMatcher []string
 
 func (m methodMatcher) Match(r *http.Request) bool {
-	for _, me := range m {
-		if me == r.Method {
+	for _, method := range m {
+		if strings.EqualFold(method, r.Method) {
 			return true
 		}
 	}
@@ -84,9 +84,14 @@ func newPathMatcher(tpl string, strictSlash bool) *pathMatcher {
 	}
 
 	raw := tpl[end:]
-	pattern.WriteString(regexp.QuoteMeta(raw))
 	if strictSlash {
+		if raw[len(raw)-1:] == "/" {
+			raw = raw[:len(raw)-1]
+		}
+		pattern.WriteString(regexp.QuoteMeta(raw))
 		pattern.WriteString("[/]?")
+	} else {
+		pattern.WriteString(regexp.QuoteMeta(raw))
 	}
 
 	reg, _ := regexp.Compile(pattern.String())
@@ -119,29 +124,4 @@ func braceIndices(s string) ([]int, error) {
 		return nil, fmt.Errorf("rango: unbalanced braces in %q", s)
 	}
 	return idxs, nil
-}
-
-// checkPairs returns the count of strings passed in, and an error if
-// the count is not an even number.
-func checkPairs(pairs ...string) (int, error) {
-	length := len(pairs)
-	if length%2 != 0 {
-		return length, fmt.Errorf(
-			"rango: number of parameters must be multiple of 2, got %v", pairs)
-	}
-	return length, nil
-}
-
-// mapFromPairsToString converts variadic string parameters to a
-// string to string map.
-func mapFromPairs(pairs ...string) (map[string]string, error) {
-	length, err := checkPairs(pairs...)
-	if err != nil {
-		return nil, err
-	}
-	m := make(map[string]string, length/2)
-	for i := 0; i < length; i += 2 {
-		m[pairs[i]] = pairs[i+1]
-	}
-	return m, nil
 }

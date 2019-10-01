@@ -27,7 +27,7 @@ minimalist Go http server framework
 - [LICENSE](#license)
 
 # Overview
-总是会有些小想法想动手玩玩，别的库虽然是好又是高性能又是有社区，但是始终有点不适，于是写这个解决一系列的小问题
+解决一些小问题的小玩具。
 
 > 值得注意的是，在默认的函数处理中，将认为所有的body中都是json数据<br>
 > 当然也对其他特殊格式进行支持，比如文件上传等操作
@@ -124,11 +124,12 @@ func main(){
 ```
 
 # Changelog
-- 修改router.Sort支持更多情况 解决包含问题
-- 增加middleware.cache
-- 增加matcher.throrttle
-- 增加ResponseWriteBody.Writer 支持代理模式
-- 增加ResponseWriteBody.Target 支持代理模式
+- 修改middleware.cache，只缓存状态码小于400的情况
+- 取消默认读取config行为，优化测试效率
+- 添加简单的HTML功能
+- 添加一些测试html，matcher，utils
+- 增加了Bytes路由，可以将[]byte返回
+- 修改了一些和测试有关的内容
 
 # Todo
 - [x] updata .08h

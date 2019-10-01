@@ -2,12 +2,8 @@ package rango
 
 import (
 	"net/http"
+	"strings"
 )
-
-func init() {
-	// load config.json file
-	readConfigFile()
-}
 
 func SimpleGo(port string) error {
 	sev := New(simpleServerName)
@@ -76,6 +72,64 @@ func (r *RangoSev) StaticDir(routerPath, dirPth string, justFiles bool) *Route {
 
 func (r *RangoSev) File(routerPath, filePth string) *Route {
 	return r.Router.Handle(fileServer(filePth)).Path(routerPath)
+}
+
+func (r *RangoSev) Bytes(routerPath string, genFn func() []byte) *Route {
+	return r.Router.Handle(bytesServer(genFn)).Path(routerPath)
+}
+
+func (r *RangoSev) String(routerPath string, genFn func() string) *Route {
+	return r.Bytes(routerPath, func() []byte {
+		return []byte(genFn())
+	})
+}
+
+func (r *RangoSev) HTML(routerPath string, filenames ...string) *Route {
+	nonHTMLfile := true
+	htmlFilename := ""
+	for _, v := range filenames {
+		if strings.HasSuffix(v, ".html") {
+			nonHTMLfile = false
+			htmlFilename = v
+		}
+	}
+	return r.String(routerPath, func() string {
+		if nonHTMLfile {
+			return ""
+		}
+		htmlContent, err := loadFile(htmlFilename)
+		if err != nil {
+			return ""
+		}
+		HTML := html(htmlContent)
+		for _, v := range filenames {
+			if v == htmlFilename {
+				continue
+			}
+			if strings.HasSuffix(v, ".css") {
+				cssFile, err := loadFile(htmlFilename)
+				if err != nil {
+					continue
+				}
+				HTML.AppendStyle(string(cssFile))
+			}
+			if strings.HasSuffix(v, ".js") {
+				cssFile, err := loadFile(htmlFilename)
+				if err != nil {
+					continue
+				}
+				HTML.AppendScript(string(cssFile))
+			}
+			if strings.HasSuffix(v, ".html") {
+				cssFile, err := loadFile(htmlFilename)
+				if err != nil {
+					continue
+				}
+				HTML.AppendBody(string(cssFile))
+			}
+		}
+		return string(HTML)
+	})
 }
 
 func (r *RangoSev) Upload(routerPath, dir string, maxsize int64, accept []string) (*Route, *uploadServer) {

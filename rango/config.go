@@ -23,6 +23,10 @@ func DebugOn() {
 	SetConf(debugKey, true)
 }
 
+func DebugOff() {
+	SetConf(debugKey, false)
+}
+
 func loadConfig(config map[string]interface{}) {
 	for k, v := range config {
 		if _, ok := rSYSCONF[k]; !ok {
@@ -38,8 +42,13 @@ func loadConfigForce(config map[string]interface{}) {
 }
 
 // read config.json
-func readConfigFile() {
-	config, pth := mustReadJSONFile(configFoundList...)
+func ReadConfig() {
+	ReadConfigFile(configFoundList...)
+}
+
+// read config.json
+func ReadConfigFile(pths ...string) {
+	config, pth := mustReadJSONFile(pths...)
 	if config == nil {
 		fmt.Println("Cant Found config json file.")
 		return
