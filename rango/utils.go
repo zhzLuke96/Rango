@@ -4,14 +4,17 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -149,4 +152,87 @@ func strOffset(t string, max int) int {
 		sum += int(c)
 	}
 	return sum % max
+}
+
+func anyLess(a, b interface{}) bool {
+	switch a.(type) {
+	case nil:
+		return true
+	case string:
+		return strings.Compare(a.(string), b.(string)) == -1
+	case int:
+		return a.(int) < b.(int)
+	case float64:
+		return a.(float64) < b.(float64)
+	case bool:
+		return a.(bool)
+	default:
+		return true
+	}
+}
+
+func cloneURL(u *url.URL) *url.URL {
+	return &url.URL{
+		Path:       u.Path,
+		Scheme:     u.Scheme,
+		Opaque:     u.Opaque,
+		User:       u.User,
+		RawPath:    u.RawPath,
+		RawQuery:   u.RawQuery,
+		Host:       u.Host,
+		ForceQuery: u.ForceQuery,
+		Fragment:   u.Fragment,
+	}
+}
+
+func excluding(in map[string]string, ex ...string) map[string]string {
+	if len(ex) == 0 {
+		return in
+	}
+	ret := make(map[string]string)
+	for k, v := range in {
+		isPassKey := false
+		for _, v := range ex {
+			if k == v {
+				isPassKey = true
+				break
+			}
+		}
+		if isPassKey {
+			continue
+		}
+		ret[k] = v
+	}
+	return ret
+}
+
+func queryEqule(a, b interface{}) bool {
+	switch at := a.(type) {
+	case nil:
+		return b == nil
+	case bool:
+		if bt, ok := b.(bool); ok {
+			return at == bt
+		}
+		return false
+	case string, int, float64, float32, uint, complex64, complex128:
+		return fmt.Sprint(a) == fmt.Sprint(b)
+	default:
+		return false
+	}
+}
+
+func toFloat(v interface{}) (float64, error) {
+	switch vt := v.(type) {
+	case string:
+		return strconv.ParseFloat(vt, 64)
+	case int:
+		return float64(vt), nil
+	case float64:
+		return vt, nil
+	case float32:
+		return float64(vt), nil
+	default:
+		return 0, fmt.Errorf("cant parsing")
+	}
 }

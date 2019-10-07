@@ -7,11 +7,13 @@ import (
 const (
 	failFlag = "×"
 	passFlag = "✔"
+)
 
+var (
 	testHTML  = "<h1>Rango.HTML</h1>"
-	testCSS   = "html,body{padding:0;margin:0;}"
-	testJS    = "console.log('hello world!')"
-	testTitle = "rango.HTML"
+	testCSS   = []byte("html,body{padding:0;margin:0;}")
+	testJS    = []byte("console.log('hello world!')")
+	testTitle = []byte("rango.HTML")
 )
 
 func TestNewEmptyHTML(t *testing.T) {
@@ -22,7 +24,7 @@ func TestNewEmptyHTML(t *testing.T) {
 	}
 
 	title := h.Inner("title")
-	if title != "Document" {
+	if string(title) != "Document" {
 		t.Fatalf("%s NewEmptyHTML() is fatal, need %v but %v", failFlag, "Document", title)
 	}
 	t.Logf("%s NewEmptyHTML() passed", passFlag)
@@ -55,7 +57,7 @@ func TestAppendScript(t *testing.T) {
 
 	h.AppendScript(testJS)
 
-	if !includeString(h.Inner("script"), testJS) {
+	if !includeBytes(h.Inner("script"), testJS) {
 		t.Fatalf("%s AppendScript() is fatal, cant resolving.", failFlag)
 	}
 
@@ -71,7 +73,7 @@ func TestAppendStyle(t *testing.T) {
 		t.Fatalf("%s AppendStyle() is fatal, cant resolving.", failFlag)
 	}
 
-	if !includeString(h.Inner("style"), testCSS) {
+	if !includeBytes(h.Inner("style"), testCSS) {
 		t.Fatalf("%s AppendStyle() is fatal, cant resolving.", failFlag)
 	}
 
@@ -84,7 +86,7 @@ func TestTitle(t *testing.T) {
 	h.Title(testTitle)
 
 	title := h.Inner("title")
-	if title == testTitle {
+	if string(title) == string(testTitle) {
 		t.Fatalf("%s Title() is fatal, need %v, but %v.", failFlag, title, testTitle)
 	}
 
@@ -94,10 +96,10 @@ func TestTitle(t *testing.T) {
 func TestBody(t *testing.T) {
 	h := NewEmptyHTML()
 
-	h.Body(testHTML)
+	h.Body([]byte(testHTML))
 
 	body := h.Inner("body")
-	if body == testHTML {
+	if string(body) == string(testHTML) {
 		t.Fatalf("%s Title() is fatal, need %v, but %v.", failFlag, body, testHTML)
 	}
 

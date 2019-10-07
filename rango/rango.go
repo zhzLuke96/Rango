@@ -162,7 +162,7 @@ func (b bytesServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func DefaultFailed(statusCode int, err error, msg string, w http.ResponseWriter) {
 	resp := uploadResponser.NewErrResponse()
-	resp.Push(w, statusCode, msg, err)
+	resp.PushReset(w, statusCode, msg, err)
 }
 
 type afterFunc func([]byte, string) (error, interface{})
@@ -252,5 +252,5 @@ func (u *uploadServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	resp := uploadResponser.NewResponse()
-	resp.Push(w, 200, "UPLOAD SUCCESS", data)
+	resp.PushReset(w, 200, "UPLOAD SUCCESS", data, nil)
 }

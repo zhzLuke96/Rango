@@ -5,6 +5,10 @@ import (
 	"net/http"
 )
 
+type responseify interface {
+	Push(http.ResponseWriter)
+}
+
 func getRespCode(offset, statusCode int, msg string) int {
 	code := strOffset(msg, responseIdxMAX)%responseIdxMAX + offset*responseIdxMAX
 	return code + statusCode*responseIdxMAX*responseIdxMAX
@@ -12,6 +16,8 @@ func getRespCode(offset, statusCode int, msg string) int {
 
 type rResponse struct {
 	offsetCode int
+
+	statusCode int
 
 	Status  string `json:"status"`
 	Code    int    `json:"code"`
@@ -22,33 +28,42 @@ type rResponse struct {
 	Meta interface{} `json:"meta"` // pagebar navbar
 }
 
-func (r *rResponse) Reset() {
+func (r *rResponse) Reset() *rResponse {
+	r.statusCode = 200
 	r.Message = "null"
 	r.Code = -1
 	r.Token = "null"
 	r.Status = "null"
 	r.Data = nil
 	r.Meta = nil
+	return r
 }
 
-func (r *rResponse) Push(w http.ResponseWriter, statusCode int, msg string, data interface{}) {
-	r.PushWithMeta(w, statusCode, msg, data, nil)
-}
-
-func (r *rResponse) PushWithMeta(w http.ResponseWriter, statusCode int, msg string, data, meta interface{}) {
-	r.Reset()
-
+func (r *rResponse) Set(statusCode int, msg string, data, meta interface{}) *rResponse {
+	r.statusCode = statusCode
 	r.Code = getRespCode(r.offsetCode, statusCode, msg)
 	r.Message = msg
 	r.Status = httpCodeText(statusCode)
 	r.Data = data
 	r.Meta = meta
+	return r
+}
 
+func (r rResponse) Push(w http.ResponseWriter) {
+	if r.statusCode < 100 {
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	if statusCode != 200 {
-		w.WriteHeader(statusCode)
+	if r.statusCode != 200 {
+		w.WriteHeader(r.statusCode)
 	}
 	w.Write(r.JSON())
+}
+
+func (r *rResponse) PushReset(w http.ResponseWriter, statusCode int, msg string, data, meta interface{}) {
+	r.Reset()
+	r.Set(statusCode, msg, data, meta)
+	r.Push(w)
 }
 
 func (r *rResponse) JSON() []byte {
@@ -62,6 +77,8 @@ func (r *rResponse) JSON() []byte {
 type errResponse struct {
 	offsetCode int
 
+	statusCode int
+
 	Code    int           `json:"error_code"`
 	Error   string        `json:"error"`
 	Message string        `json:"message"`
@@ -69,28 +86,41 @@ type errResponse struct {
 	Debug   []interface{} `json:"debug"`
 }
 
-func (e *errResponse) Reset() {
+func (e *errResponse) Reset() *errResponse {
 	e.Code = -1
 	e.Error = "null"
 	e.Message = "null"
 	e.Debug = nil
+	e.statusCode = 500
+	return e
 }
 
-func (e *errResponse) Push(w http.ResponseWriter, statusCode int, msg string, err error) {
-	e.Reset()
-
+func (e *errResponse) Set(statusCode int, msg string, err error) *errResponse {
+	e.statusCode = statusCode
 	e.Code = getRespCode(e.offsetCode, statusCode, msg)
 	e.Message = msg
 	if isDebugOn() && err != nil {
 		e.Error = err.Error()
 	}
 	e.Status = httpCodeText(statusCode)
+	return e
+}
 
+func (e errResponse) Push(w http.ResponseWriter) {
+	if e.statusCode < 100 {
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	if statusCode != 200 {
-		w.WriteHeader(statusCode)
+	if e.statusCode != 200 {
+		w.WriteHeader(e.statusCode)
 	}
 	w.Write(e.JSON())
+}
+
+func (e *errResponse) PushReset(w http.ResponseWriter, statusCode int, msg string, err error) {
+	e.Reset()
+	e.Set(statusCode, msg, err)
+	e.Push(w)
 }
 
 func (e *errResponse) JSON() []byte {

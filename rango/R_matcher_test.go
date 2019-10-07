@@ -86,12 +86,12 @@ func TestPathMappingMatcher(t *testing.T) {
 	})
 }
 func TestPathMatcher(t *testing.T) {
-	p1 := newPathMatcher("/api/{arg:\\w+}", false)
-	p2 := newPathMatcher("/api/{arg:\\d+}", false)
-	p3 := newPathMatcher("/assert", false)
+	p1 := newPathMatcher("/api/{arg:\\w+}", false, false)
+	p2 := newPathMatcher("/api/{arg:\\d+}", false, false)
+	p3 := newPathMatcher("/assert", false, true)
 
-	p4 := newPathMatcher("/home/", true)
-	p5 := newPathMatcher("/home/", false)
+	p4 := newPathMatcher("/home/", true, false)
+	p5 := newPathMatcher("/home/", false, false)
 
 	indexReq := newURLRequest("/")
 	homeReq := newURLRequest("/home")

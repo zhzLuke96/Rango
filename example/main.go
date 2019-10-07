@@ -16,13 +16,15 @@ var memCacher = middleware.NewMemCacher(10)
 
 func main() {
 	rango.DebugOn()
+	rango.ReadConfig()
+
 	sev := initServer()
 	// Runing Server
 	sev.Start(":8080")
 }
 
-func newSev(name string) *rango.RangoSev {
-	sev := &rango.RangoSev{
+func newSev(name string) *rango.Server {
+	sev := &rango.Server{
 		Name:    name,
 		Router:  rango.NewRouter(),
 		Handler: rango.NewSevHandler(),
@@ -35,13 +37,13 @@ func newSev(name string) *rango.RangoSev {
 	return sev
 }
 
-func initServer() *rango.RangoSev {
+func initServer() *rango.Server {
 	sev := newSev("demo")
 
 	// rango Func example
 	// use custom matcher
 	// set before-route.middleware
-	sev.Func("/add", func(vars rango.ReqVars) interface{} {
+	sev.Func("/add", func(vars *rango.ReqVars) interface{} {
 		numa := vars.GetDefault("a", 1)
 		numb := vars.GetDefault("b", 1)
 		res := toInt(numb) + toInt(numa)
@@ -65,16 +67,16 @@ func initServer() *rango.RangoSev {
 
 	// Group routing
 	apiGroup := sev.Group("/api")
-	apiGroup.Func("/user/{id:\\d+}", func(vars rango.ReqVars) interface{} {
+	apiGroup.Func("/user/{id:\\d+}", func(vars *rango.ReqVars) interface{} {
 		userID := rango.GetConf("userPrefix", "").(string) + "_" + vars.GetDefault("id", "null").(string)
 		return userID
 	})
 
-	// HATEOAS
-	hateoas := rango.NewRHateoas("**HATEOAS**", "In progress")
-	hateoas.Add("add tool", "/add?a={a}&b={b}", "add number a and number b", []string{"GET", "POST"})
 	// map url [/api/] to hateoas serveHTTP
-	apiGroup.Handle("/", hateoas)
+	// apiGroup.Handle("/", hateoas)
+
+	// HTML /home form inde.html index.js style.css
+	apiGroup.HTML("/", "./www/index.html", "./www/index.js", "./www/style.css")
 
 	// map [/api] to static file
 	apiGroup.File("", "./api_README.md")

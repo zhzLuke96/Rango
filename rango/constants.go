@@ -15,14 +15,23 @@ const (
 	// ----------
 	// SissionMid used
 	sessionCookieName = "_sid_"
+
+	// CRUD
+	readRequestKey   = "QUERY"
+	createRequestKey = "INSERT"
+	updateRequestKey = "UPDATE"
+	deleteRequestKey = "DELETE"
 )
 
 var (
 	configFoundList = []string{"./config.json", "~/config.json", "/config.json"}
 
-	uploadResponser   = NewResponser("uploadServer")
-	rHFuncResponser   = NewResponser("rangoHandlerFunction")
-	errCatchResponser = NewResponser("ErrCatchMid")
-	notFoundResponser = NewResponser("notFound")
+	uploadResponser    = NewResponser("uploadServer")
+	rHFuncResponser    = NewResponser("rangoHandlerFunction")
+	errCatchResponser  = NewResponser("ErrCatchMid")
+	notFoundResponser  = NewResponser("notFound")
+	curdResponser      = NewResponser("curd")
+	mainFileResponser  = NewResponser("mainFile")
+	mainBytesResponser = NewResponser("mainBytes")
 	// hateoasResponser = NewResponser("HATEOAS")
 )

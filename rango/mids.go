@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -37,7 +36,7 @@ func ErrCatchMid(w ResponseWriteBody, r *http.Request, next MiddleNextFunc) {
 	next(w, r)
 	if w.StatusCode() >= 400 {
 		if w.ContentLength() == 0 {
-			errCatchResponser.NewErrResponse().Push(w, w.StatusCode(), "Unknown Error Catched", nil)
+			errCatchResponser.NewErrResponse().PushReset(w, w.StatusCode(), "Unknown Error Catched", nil)
 		}
 	}
 }
@@ -59,7 +58,7 @@ func SissionMid(w ResponseWriteBody, r *http.Request, next MiddleNextFunc) {
 func StripPrefixMid(prefix string) MiddlewareFunc {
 	return func(w ResponseWriteBody, r *http.Request, next MiddleNextFunc) {
 		if p := strings.TrimPrefix(r.URL.Path, prefix); len(p) < len(r.URL.Path) {
-			newURL := new(url.URL)
+			newURL := cloneURL(r.URL)
 			newURL.Path = p
 			*r.URL = *newURL
 		}

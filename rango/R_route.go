@@ -72,10 +72,15 @@ func isRouterRegexp(tpl string) bool {
 // 设置path路由
 func (r *Route) Path(tpl string) *Route {
 	if isRouterRegexp(tpl) {
-		return r.PathMatch(tpl, false)
+		return r.PathMatch(tpl, false, true)
 	}
-	r.PathMatcher = pathMappingMatcher(tpl)
-	return r.AddMatcher(r.PathMatcher.(pathMappingMatcher))
+	return r.PathMapping(tpl)
+}
+
+func (r *Route) PathMapping(pth string) *Route {
+	matcher := pathMappingMatcher(pth)
+	r.PathMatcher = matcher
+	return r.AddMatcher(matcher)
 }
 
 // 设置path路由
@@ -86,8 +91,8 @@ func (r *Route) Path(tpl string) *Route {
 // PathMatch("/user", false)
 // 则只匹配 host/user
 
-func (r *Route) PathMatch(tpl string, strictSlash bool) *Route {
-	r.PathMatcher = newPathMatcher(tpl, strictSlash)
+func (r *Route) PathMatch(tpl string, strictSlash, weakMatch bool) *Route {
+	r.PathMatcher = newPathMatcher(tpl, strictSlash, weakMatch)
 	return r.AddMatcher(r.PathMatcher.(*pathMatcher))
 }
 

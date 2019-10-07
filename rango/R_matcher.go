@@ -62,7 +62,7 @@ func (p pathMatcher) Match(r *http.Request) bool {
 	return false
 }
 
-func newPathMatcher(tpl string, strictSlash bool) *pathMatcher {
+func newPathMatcher(tpl string, strictSlash, weakMatch bool) *pathMatcher {
 	var idxs []int
 	idxs, _ = braceIndices(tpl)
 	template := tpl
@@ -85,13 +85,16 @@ func newPathMatcher(tpl string, strictSlash bool) *pathMatcher {
 
 	raw := tpl[end:]
 	if strictSlash {
-		if raw[len(raw)-1:] == "/" {
+		if len(raw) != 0 && raw[len(raw)-1:] == "/" {
 			raw = raw[:len(raw)-1]
 		}
 		pattern.WriteString(regexp.QuoteMeta(raw))
 		pattern.WriteString("[/]?")
 	} else {
 		pattern.WriteString(regexp.QuoteMeta(raw))
+	}
+	if !weakMatch {
+		pattern.WriteString("$")
 	}
 
 	reg, _ := regexp.Compile(pattern.String())

@@ -7,45 +7,43 @@ import (
 	"net/http"
 )
 
-type ReqVars map[string]interface{}
+type ReqVars struct {
+	path  map[string]interface{}
+	query map[string]string
+	json  map[string]interface{}
 
-func newReqVarsBase() *ReqVars {
-	inner := make(ReqVars)
-	return &inner
+	req *http.Request
 }
 
-// func newReqVarsFromJSONStr(jsonText string) (*ReqVars, error) {
-// 	return newReqVarsFromJSON([]byte(jsonText))
-// }
-
-// func newReqVarsFromJSON(jsonText []byte) (*ReqVars, error) {
-// 	vars := newReqVarsBase()
-
-// 	if err := json.Unmarshal(jsonText, vars); err != nil {
-// 		return nil, err
-// 	}
-// 	return vars, nil
-// }
+func newReqVarsBase() *ReqVars {
+	return &ReqVars{
+		path:  make(map[string]interface{}),
+		query: make(map[string]string),
+		json:  make(map[string]interface{}),
+	}
+}
 
 func newReqVars(req *http.Request) (*ReqVars, error) {
 	// 优先级
 	// path < query < body
 	vars := newReqVarsBase()
+	vars.req = req
+
 	// load path vars
-	pathVars := Vars(req)
-	for k, v := range pathVars {
-		(*vars)[k] = v
+	path := Vars(req)
+	for k, v := range path {
+		vars.path[k] = v
 	}
 	// load query string
 	values := req.URL.Query()
 	for k := range values {
-		(*vars)[k] = values.Get(k)
+		vars.query[k] = values.Get(k)
 	}
 	// load body json
 	body, _ := ioutil.ReadAll(req.Body)
 	if len(body) != 0 {
 		if body != nil {
-			if err := json.Unmarshal(body, vars); err != nil {
+			if err := json.Unmarshal(body, &vars.json); err != nil {
 				return nil, err
 			}
 		}
@@ -54,9 +52,33 @@ func newReqVars(req *http.Request) (*ReqVars, error) {
 	return vars, nil
 }
 
+func (r ReqVars) Request() *http.Request {
+	return r.req
+}
+
+func (r ReqVars) Query() map[string]string {
+	return r.query
+}
+
+func (r ReqVars) Path() map[string]interface{} {
+	return r.path
+}
+
+func (r ReqVars) JSON() map[string]interface{} {
+	return r.json
+}
+
 func (r ReqVars) Has(key string) bool {
-	_, ok := r[key]
-	return ok
+	if _, ok := r.json[key]; ok {
+		return true
+	}
+	if _, ok := r.path[key]; ok {
+		return true
+	}
+	if _, ok := r.query[key]; ok {
+		return true
+	}
+	return false
 }
 
 func (r ReqVars) HasAll(keys []string) bool {
@@ -69,28 +91,62 @@ func (r ReqVars) HasAll(keys []string) bool {
 }
 
 func (r ReqVars) Get(key string) (interface{}, error) {
-	if v, ok := r[key]; ok {
+	if v, ok := r.json[key]; ok {
+		return v, nil
+	}
+	if v, ok := r.path[key]; ok {
+		return v, nil
+	}
+	if v, ok := r.query[key]; ok {
 		return v, nil
 	}
 	return "", fmt.Errorf("cannot get value of key: %v", key)
 }
 
 func (r ReqVars) GetDefault(key string, defaultValue interface{}) interface{} {
-	if v, ok := r[key]; ok {
+	if v, ok := r.json[key]; ok {
+		return v
+	}
+	if v, ok := r.path[key]; ok {
+		return v
+	}
+	if v, ok := r.query[key]; ok {
 		return v
 	}
 	return defaultValue
 }
 
-type rHFunc func(ReqVars) interface{}
+type rHFunc func(*ReqVars) interface{}
 
 func (r rHFunc) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	vars, err := newReqVars(req)
 	if err != nil {
 		errResp := rHFuncResponser.NewErrResponse()
-		errResp.Push(w, 400, "Error parsing request body", err)
+		errResp.PushReset(w, 400, "Error parsing request body", err)
 		return
 	}
-	resp := rHFuncResponser.NewResponse()
-	resp.Push(w, 200, "success", r(*vars))
+	respValue := r(vars)
+	switch t := respValue.(type) {
+	case responseify:
+		t.Push(w)
+		return
+	case errResponse, rResponse:
+		respValue.(responseify).Push(w)
+		return
+	case *errResponse:
+		t.Push(w)
+		return
+	case *rResponse:
+		t.Push(w)
+		return
+	case []byte:
+		w.Write(t)
+		return
+	case *[]byte:
+		w.Write(*t)
+		return
+	default:
+		resp := rHFuncResponser.NewResponse()
+		resp.PushReset(w, 200, "success", respValue, nil)
+	}
 }
