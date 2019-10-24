@@ -36,3 +36,5 @@ rango.zip
 
 # example
 example/imgs
+example/wasm_exec.js
+*.wasm

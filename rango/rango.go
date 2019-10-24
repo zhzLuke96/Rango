@@ -138,6 +138,10 @@ func (f HandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f(*NewResponseWriter(w), r)
 }
 
+// ------------------------------------------------
+// base define end
+// ------------------------------------------------
+
 type fileServer string
 
 func (f fileServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {

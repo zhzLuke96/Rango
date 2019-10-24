@@ -11,10 +11,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime/debug"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -114,6 +114,7 @@ func sliceHasPrefix(s []string, value string) bool {
 	return sliceIndexPrefix(s, value) != -1
 }
 
+// SaveFile 保存文件
 func SaveFile(fb []byte, pth string) error {
 	if exist, _ := pathExists(pth); exist {
 		return nil
@@ -154,23 +155,6 @@ func strOffset(t string, max int) int {
 	return sum % max
 }
 
-func anyLess(a, b interface{}) bool {
-	switch a.(type) {
-	case nil:
-		return true
-	case string:
-		return strings.Compare(a.(string), b.(string)) == -1
-	case int:
-		return a.(int) < b.(int)
-	case float64:
-		return a.(float64) < b.(float64)
-	case bool:
-		return a.(bool)
-	default:
-		return true
-	}
-}
-
 func cloneURL(u *url.URL) *url.URL {
 	return &url.URL{
 		Path:       u.Path,
@@ -185,54 +169,38 @@ func cloneURL(u *url.URL) *url.URL {
 	}
 }
 
-func excluding(in map[string]string, ex ...string) map[string]string {
-	if len(ex) == 0 {
-		return in
-	}
-	ret := make(map[string]string)
-	for k, v := range in {
-		isPassKey := false
-		for _, v := range ex {
-			if k == v {
-				isPassKey = true
-				break
-			}
-		}
-		if isPassKey {
-			continue
-		}
-		ret[k] = v
-	}
-	return ret
-}
+var buildWasms = make(map[string]string)
 
-func queryEqule(a, b interface{}) bool {
-	switch at := a.(type) {
-	case nil:
-		return b == nil
-	case bool:
-		if bt, ok := b.(bool); ok {
-			return at == bt
-		}
-		return false
-	case string, int, float64, float32, uint, complex64, complex128:
-		return fmt.Sprint(a) == fmt.Sprint(b)
-	default:
-		return false
-	}
-}
+func buildGoWasm(filePth string) (string, error) {
+	// ----
+	// WARING 部分系统中 无法正常使用
+	// ----
 
-func toFloat(v interface{}) (float64, error) {
-	switch vt := v.(type) {
-	case string:
-		return strconv.ParseFloat(vt, 64)
-	case int:
-		return float64(vt), nil
-	case float64:
-		return vt, nil
-	case float32:
-		return float64(vt), nil
-	default:
-		return 0, fmt.Errorf("cant parsing")
+	if v, ok := buildWasms[filePth]; ok {
+		return v, nil
 	}
+	if ok, err := pathExists(filePth); !ok || err != nil {
+		return "", err
+	}
+	hash := randStr(10)
+	wasmfile := "./wasm/" + hash + ".wasm"
+	// if pwd, err := os.Getwd(); err == nil {
+	// 	if wasmfile[:1] == "." {
+	// 		wasmfile = pwd + wasmfile[1:]
+	// 	}
+	// 	if filePth[:1] == "." {
+	// 		filePth = pwd + filePth[1:]
+	// 	}
+	// }
+	cmd := exec.Command("go", "build", "-o", wasmfile, filePth)
+	cmd.Env = []string{"GOOS=js", "GOARCH=wasm"}
+	buf, err := cmd.Output()
+	if len(buf) == 0 || err != nil {
+		if e, ok := err.(*exec.ExitError); ok {
+			return "", fmt.Errorf(string(e.Stderr))
+		}
+		return "", fmt.Errorf("%s\n%s", string(buf), err.Error())
+	}
+	buildWasms[filePth] = wasmfile
+	return wasmfile, nil
 }

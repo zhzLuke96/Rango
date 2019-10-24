@@ -14,7 +14,7 @@ func getRespCode(offset, statusCode int, msg string) int {
 	return code + statusCode*responseIdxMAX*responseIdxMAX
 }
 
-type rResponse struct {
+type Response struct {
 	offsetCode int
 
 	statusCode int
@@ -28,7 +28,7 @@ type rResponse struct {
 	Meta interface{} `json:"meta"` // pagebar navbar
 }
 
-func (r *rResponse) Reset() *rResponse {
+func (r *Response) Reset() *Response {
 	r.statusCode = 200
 	r.Message = "null"
 	r.Code = -1
@@ -39,7 +39,7 @@ func (r *rResponse) Reset() *rResponse {
 	return r
 }
 
-func (r *rResponse) Set(statusCode int, msg string, data, meta interface{}) *rResponse {
+func (r *Response) Set(statusCode int, msg string, data, meta interface{}) *Response {
 	r.statusCode = statusCode
 	r.Code = getRespCode(r.offsetCode, statusCode, msg)
 	r.Message = msg
@@ -49,7 +49,7 @@ func (r *rResponse) Set(statusCode int, msg string, data, meta interface{}) *rRe
 	return r
 }
 
-func (r rResponse) Push(w http.ResponseWriter) {
+func (r Response) Push(w http.ResponseWriter) {
 	if r.statusCode < 100 {
 		return
 	}
@@ -60,13 +60,13 @@ func (r rResponse) Push(w http.ResponseWriter) {
 	w.Write(r.JSON())
 }
 
-func (r *rResponse) PushReset(w http.ResponseWriter, statusCode int, msg string, data, meta interface{}) {
+func (r *Response) PushReset(w http.ResponseWriter, statusCode int, msg string, data, meta interface{}) {
 	r.Reset()
 	r.Set(statusCode, msg, data, meta)
 	r.Push(w)
 }
 
-func (r *rResponse) JSON() []byte {
+func (r *Response) JSON() []byte {
 	ret, err := json.Marshal(r)
 	if err == nil {
 		return ret
@@ -74,7 +74,7 @@ func (r *rResponse) JSON() []byte {
 	return nil
 }
 
-type errResponse struct {
+type ErrResponse struct {
 	offsetCode int
 
 	statusCode int
@@ -86,7 +86,7 @@ type errResponse struct {
 	Debug   []interface{} `json:"debug"`
 }
 
-func (e *errResponse) Reset() *errResponse {
+func (e *ErrResponse) Reset() *ErrResponse {
 	e.Code = -1
 	e.Error = "null"
 	e.Message = "null"
@@ -95,7 +95,7 @@ func (e *errResponse) Reset() *errResponse {
 	return e
 }
 
-func (e *errResponse) Set(statusCode int, msg string, err error) *errResponse {
+func (e *ErrResponse) Set(statusCode int, msg string, err error) *ErrResponse {
 	e.statusCode = statusCode
 	e.Code = getRespCode(e.offsetCode, statusCode, msg)
 	e.Message = msg
@@ -106,7 +106,7 @@ func (e *errResponse) Set(statusCode int, msg string, err error) *errResponse {
 	return e
 }
 
-func (e errResponse) Push(w http.ResponseWriter) {
+func (e ErrResponse) Push(w http.ResponseWriter) {
 	if e.statusCode < 100 {
 		return
 	}
@@ -117,13 +117,13 @@ func (e errResponse) Push(w http.ResponseWriter) {
 	w.Write(e.JSON())
 }
 
-func (e *errResponse) PushReset(w http.ResponseWriter, statusCode int, msg string, err error) {
+func (e *ErrResponse) PushReset(w http.ResponseWriter, statusCode int, msg string, err error) {
 	e.Reset()
 	e.Set(statusCode, msg, err)
 	e.Push(w)
 }
 
-func (e *errResponse) JSON() []byte {
+func (e *ErrResponse) JSON() []byte {
 	ret, err := json.MarshalIndent(e, "", "  ")
 	if err == nil {
 		return ret
@@ -143,14 +143,14 @@ func NewResponser(name string) *rResponser {
 	}
 }
 
-func (r *rResponser) NewResponse() *rResponse {
-	return &rResponse{
+func (r *rResponser) NewResponse() *Response {
+	return &Response{
 		offsetCode: r.Code,
 	}
 }
 
-func (r *rResponser) NewErrResponse() *errResponse {
-	return &errResponse{
+func (r *rResponser) NewErrResponse() *ErrResponse {
+	return &ErrResponse{
 		offsetCode: r.Code,
 	}
 }

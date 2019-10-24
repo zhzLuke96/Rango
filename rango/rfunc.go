@@ -130,13 +130,13 @@ func (r rHFunc) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	case responseify:
 		t.Push(w)
 		return
-	case errResponse, rResponse:
+	case ErrResponse, Response:
 		respValue.(responseify).Push(w)
 		return
-	case *errResponse:
+	case *ErrResponse:
 		t.Push(w)
 		return
-	case *rResponse:
+	case *Response:
 		t.Push(w)
 		return
 	case []byte:

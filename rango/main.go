@@ -1,7 +1,9 @@
 package rango
 
 import (
+	"fmt"
 	"net/http"
+	"path"
 	"strings"
 )
 
@@ -29,7 +31,7 @@ func New(name string) *Server {
 	}
 	sev.Handler.Use(LogRequestMid)
 	sev.Handler.Use(ErrCatchMid)
-	sev.Handler.Use(SignHeader("server", "rango/"+Version))
+	sev.Handler.Use(SignHeaderMid("server", "rango/"+Version))
 	sev.Handler.Use(sev.Router.Mid)
 	return sev
 }
@@ -77,6 +79,24 @@ func (r *Server) StaticDir(routerPath, dirPth string, justFiles bool) *Route {
 	return r.Router.Handle(fs).PathMatch(routerPath, true, true)
 }
 
+var autoFiled = []string{}
+
+func (r *Server) autoFile(filePth string) string {
+	routerPth := filePth
+	if routerPth[:1] == "." {
+		routerPth = routerPth[1:]
+	}
+	for _, v := range autoFiled {
+		if v == routerPth {
+			return v
+		}
+	}
+	r.File(routerPth, filePth)
+	autoFiled = append(autoFiled, routerPth)
+	r.Sort()
+	return routerPth
+}
+
 // File 将文件路径映射到路由上
 // 如果文件不存在或者文件路径错误，将回复404错误
 //
@@ -116,7 +136,8 @@ func (r *Server) String(routerPath string, genFn func() string) *Route {
 //
 // 文件列表可以接受 css js html
 // 且最后会将各种 html 文件拼接之后返回
-func (r *Server) HTML(routerPath string, filenames ...string) *Route {
+func (r *Server) HTML(routerPath string, filenames ...string) (*Route, func(func(h *Rhtml))) {
+	handlers := []func(h *Rhtml){}
 	nonHTMLfile := true
 	htmlFilename := ""
 	for _, v := range filenames {
@@ -126,44 +147,62 @@ func (r *Server) HTML(routerPath string, filenames ...string) *Route {
 		}
 	}
 	return r.Bytes(routerPath, func() ([]byte, error) {
-		var HTML html
-		if nonHTMLfile {
-			HTML = NewEmptyHTML()
-		} else {
-			htmlContent, err := loadFile(htmlFilename)
-			if err != nil {
+			var HTML Rhtml
+			if nonHTMLfile {
 				HTML = NewEmptyHTML()
+			} else {
+				htmlContent, err := loadFile(htmlFilename)
+				if err != nil {
+					HTML = NewEmptyHTML()
+				}
+				HTML = Rhtml(htmlContent)
 			}
-			HTML = html(htmlContent)
+			for _, handle := range handlers {
+				handle(&HTML)
+			}
+			for _, filePth := range filenames {
+				if !nonHTMLfile && filePth == htmlFilename {
+					continue
+				}
+				switch path.Ext(filePth) {
+				case ".css":
+					cssFile, err := loadFile(filePth)
+					if err != nil {
+						continue
+					}
+					HTML.AppendStyle(cssFile)
+				case ".js":
+					jsFile, err := loadFile(filePth)
+					if err != nil {
+						continue
+					}
+					HTML.AppendScript(jsFile)
+				case ".html":
+					htmlFile, err := loadFile(filePth)
+					if err != nil {
+						continue
+					}
+					HTML.AppendBody(htmlFile)
+				case ".wasm":
+					if ok, err := pathExists(filePth); !ok || err != nil {
+						continue
+					}
+					HTML.Wasm(r.autoFile(filePth))
+				case ".go":
+					// 不太好使
+					if wPth, err := buildGoWasm(filePth); err == nil {
+						HTML.Wasm(r.autoFile(wPth))
+					} else {
+						fmt.Println(err)
+					}
+				default:
+					continue
+				}
+			}
+			return HTML, nil
+		}), func(fn func(h *Rhtml)) {
+			handlers = append(handlers, fn)
 		}
-		for _, filePth := range filenames {
-			if !nonHTMLfile && filePth == htmlFilename {
-				continue
-			}
-			if strings.HasSuffix(filePth, ".css") {
-				cssFile, err := loadFile(filePth)
-				if err != nil {
-					continue
-				}
-				HTML.AppendStyle(cssFile)
-			}
-			if strings.HasSuffix(filePth, ".js") {
-				jsFile, err := loadFile(filePth)
-				if err != nil {
-					continue
-				}
-				HTML.AppendScript(jsFile)
-			}
-			if strings.HasSuffix(filePth, ".html") {
-				htmlFile, err := loadFile(filePth)
-				if err != nil {
-					continue
-				}
-				HTML.AppendBody(htmlFile)
-			}
-		}
-		return HTML, nil
-	})
 }
 
 // Upload 创建一个 upload 服务
@@ -185,14 +224,6 @@ func (r *Server) GET(routerPthTpl string, fn rHFunc) *Route {
 // POST 创建一个只接受 POST 请求的映射
 func (r *Server) POST(routerPthTpl string, fn rHFunc) *Route {
 	return r.Router.Handle(fn).PathMatch(routerPthTpl, true, false).Methods("POST")
-}
-
-// CRUD 根据 crudify 类快速创建一个 CRUD 的 API 接口
-//
-// 包含一系列的二级路径
-func (r *Server) CRUD(routerPthTpl string, c crudify) *Route {
-	crud := newCRUD(c, routerPthTpl)
-	return r.Router.Handle(crud).PathMatch(routerPthTpl, false, true)
 }
 
 // Group 路径分组功能

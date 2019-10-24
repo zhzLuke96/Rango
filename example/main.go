@@ -9,7 +9,6 @@ import (
 
 	"../middleware"
 	"../rango"
-	// "../rango/auth"
 )
 
 var memCacher = middleware.NewMemCacher(10)
@@ -31,7 +30,7 @@ func newSev(name string) *rango.Server {
 	}
 	sev.Handler.Use(rango.LogRequestMid)
 	sev.Handler.Use(rango.ErrCatchMid)
-	sev.Handler.Use(rango.SignHeader("server", "rango/"+rango.Version))
+	sev.Handler.Use(rango.SignHeaderMid("server", "rango/"+rango.Version))
 	sev.Handler.Use(memCacher.Mid)
 	sev.Handler.Use(sev.Router.Mid)
 	return sev
@@ -85,6 +84,19 @@ func initServer() *rango.Server {
 	sev.Static("/", "./www")
 	sev.Static("/image", "./imgs")
 
+	// WebAssembly
+	_, wasmHTML := sev.HTML("/wasm", "./www/index.wasm", "./www/rainbow.wasm")
+	wasmHTML(func(h *rango.Rhtml) {
+		h.Title([]byte("WebAssembly"))
+		h.AppendStyle([]byte(`body,html { margin:0;padding:0;width:100%;height:100%;background:#282c34;color:honeydew; }
+#app{text-align: center;}
+#bgcanvas { position:fixed;opacity:0.5;top:0;right:0;bottom:0;left:0;}`))
+		h.AppendBody([]byte("<div id='app'></div>"))
+		h.AppendBody([]byte("<canvas id='bgcanvas'></canvas>"))
+	})
+	sev.File("/wasm_exec.js", "./wasm_exec.js")
+
+	// sort router table
 	sev.Sort()
 
 	return sev

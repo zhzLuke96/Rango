@@ -1,7 +1,7 @@
 # rango 
 ![LICENSE badge](https://img.shields.io/badge/license-GPL3.0-blue)
 ![build badge](https://img.shields.io/badge/build-passing-green)
-![coverage badge](https://img.shields.io/badge/coverage-15.6%-orange)
+![coverage badge](https://img.shields.io/badge/coverage-19.2%-orange)
 ![size badge](https://img.shields.io/badge/line-2.8K-green)
 
 minimalist Go http server framework
@@ -78,6 +78,8 @@ $> curl -H "Content-Type:application/json" -X POST --data '{"name": "luke96"}' 1
 # Example
 project in `example` folder list all `rango.functions` and common usage to help users get started quickly.
 
+> * require go `1.13`, build /www/mouse_rainbow.go,
+
 # Middlewares
 ## usage
 ```golang
@@ -126,19 +128,9 @@ func main(){
 ```
 
 # Changelog
-- 增加`crud`快速原型功能，带简单查询
-- 修改`response`结构，增加`Set`和`PushReset`，分离操作和数据
-- 修改`rfunc`行为，识别`responseify`和 byte数组，默认返回`response:200`
-- 修改`html`为`[]byte`结构
-- 删除`hateoas.go`
-- 修改`RangoSev`为`rango.Server`
-- 添加`main.go`中的注释
-- 增加`sev.Bytes`和`sev.String`直接返回数据
-- 修复`GET` `POST`默认路由映射行为
-- 修复URL重写错误
-- 更改`newPathMatcher`行为，strictSlash将测试最后一个字符是否是 `/`，并可以创建`weak`和`strong`路由
-- 添加`PathMapping`，可直接创建`mapping`路由
-- 修改测试代码
+- 增加 wasm 支持
+- 修复了一些不常见的 bug 
+- 迁移快速原型功能到独立 [repo](https://github.com/zhzLuke96/rCRUD)
 
 # Todo
 - [x] updata .08h

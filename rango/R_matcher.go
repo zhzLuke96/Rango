@@ -56,7 +56,7 @@ func (p pathMatcher) Match(r *http.Request) bool {
 				vars[k] = matchArr[i]
 			}
 		}
-		*r = *SetVars(r, vars)
+		*r = *setVars(r, vars)
 		return true
 	}
 	return false

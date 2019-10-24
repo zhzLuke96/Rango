@@ -15,12 +15,6 @@ const (
 	// ----------
 	// SissionMid used
 	sessionCookieName = "_sid_"
-
-	// CRUD
-	readRequestKey   = "QUERY"
-	createRequestKey = "INSERT"
-	updateRequestKey = "UPDATE"
-	deleteRequestKey = "DELETE"
 )
 
 var (
@@ -30,7 +24,6 @@ var (
 	rHFuncResponser    = NewResponser("rangoHandlerFunction")
 	errCatchResponser  = NewResponser("ErrCatchMid")
 	notFoundResponser  = NewResponser("notFound")
-	curdResponser      = NewResponser("curd")
 	mainFileResponser  = NewResponser("mainFile")
 	mainBytesResponser = NewResponser("mainBytes")
 	// hateoasResponser = NewResponser("HATEOAS")

@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// LogRequest print a request status
+// LogRequestMid print a request status
 func LogRequestMid(w ResponseWriteBody, r *http.Request, next MiddleNextFunc) {
 	t := time.Now()
 	method := r.Method
@@ -24,7 +24,7 @@ func LogRequestMid(w ResponseWriteBody, r *http.Request, next MiddleNextFunc) {
 	)
 }
 
-// ErrCatch catch and recover
+// ErrCatchMid catch and recover
 func ErrCatchMid(w ResponseWriteBody, r *http.Request, next MiddleNextFunc) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -41,20 +41,7 @@ func ErrCatchMid(w ResponseWriteBody, r *http.Request, next MiddleNextFunc) {
 	}
 }
 
-// Sission if request cookies.length == 0 then add a cookie
-func SissionMid(w ResponseWriteBody, r *http.Request, next MiddleNextFunc) {
-	if _, err := r.Cookie(sessionCookieName); err != nil {
-		c := new(http.Cookie)
-		c.HttpOnly = true
-		c.Expires = time.Now().Add(time.Hour)
-		c.Name = sessionCookieName
-		c.Value = randStr(40)
-		c.Path = "/"
-		http.SetCookie(w, c)
-	}
-	next(w, r)
-}
-
+// StripPrefixMid 行为和http.StripPrefix一样
 func StripPrefixMid(prefix string) MiddlewareFunc {
 	return func(w ResponseWriteBody, r *http.Request, next MiddleNextFunc) {
 		if p := strings.TrimPrefix(r.URL.Path, prefix); len(p) < len(r.URL.Path) {
@@ -66,7 +53,8 @@ func StripPrefixMid(prefix string) MiddlewareFunc {
 	}
 }
 
-func SignHeader(key, value string) MiddlewareFunc {
+// SignHeaderMid 修改http返回头中的一个值
+func SignHeaderMid(key, value string) MiddlewareFunc {
 	return func(w ResponseWriteBody, r *http.Request, next MiddleNextFunc) {
 		w.Header().Set(key, value)
 		next(w, r)

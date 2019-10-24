@@ -86,8 +86,8 @@ func TestTitle(t *testing.T) {
 	h.Title(testTitle)
 
 	title := h.Inner("title")
-	if string(title) == string(testTitle) {
-		t.Fatalf("%s Title() is fatal, need %v, but %v.", failFlag, title, testTitle)
+	if string(title) != string(testTitle) {
+		t.Fatalf("%s Title() is fatal, need %v, but %v.", failFlag, string(title), string(testTitle))
 	}
 
 	t.Logf("%s Title() passed", passFlag)

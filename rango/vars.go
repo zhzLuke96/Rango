@@ -29,6 +29,6 @@ func Vars(r *http.Request) map[string]string {
 	return nil
 }
 
-func SetVars(r *http.Request, val interface{}) *http.Request {
+func setVars(r *http.Request, val interface{}) *http.Request {
 	return contextSet(r, varsKey, val)
 }
