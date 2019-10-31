@@ -1,7 +1,7 @@
 # rango 
 ![LICENSE badge](https://img.shields.io/badge/license-GPL3.0-blue)
-![build badge](https://img.shields.io/badge/build-passing-green)
-![coverage badge](https://img.shields.io/badge/coverage-19.2%-orange)
+[![Build Status](https://travis-ci.org/zhzLuke96/Rango.svg?branch=master)](https://travis-ci.org/zhzLuke96/Rango)
+[![Coverage Status](https://coveralls.io/repos/github/zhzLuke96/Rango/badge.svg?branch=master)](https://coveralls.io/github/zhzLuke96/Rango?branch=master)
 ![size badge](https://img.shields.io/badge/line-2.8K-green)
 
 minimalist Go http server framework
@@ -87,8 +87,8 @@ mid := NewMid(...)
 sev.Use(mid)
 ```
 ## list
-| name      | desc                 | example                         | effect                           |
-| --------- | -------------------- | ------------------------------- | -------------------------------- |
+| name      | desc                 | example                | effect                           |
+| --------- | -------------------- | ---------------------- | -------------------------------- |
 | memCacher | Memory-based caching | `NewMemCacher(60).Mid` | 将body保存在缓存中 超时设置为60s |
 
 # Matchers
@@ -98,8 +98,8 @@ mat := NewMat(...)
 sev.Func("/", fn).AddMatcher(mat)
 ```
 ## list
-| name     | desc   | example                              | effect                |
-| -------- | ------ | ------------------------------------ | --------------------- |
+| name     | desc   | example            | effect                |
+| -------- | ------ | ------------------ | --------------------- |
 | throttle | 限流器 | `newThrottle(500)` | 500ms内仅回复一个请求 |
 
 
