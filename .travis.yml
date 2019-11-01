@@ -2,10 +2,13 @@ language: go
 
 go: master
 
+branches:
+  - master
+  - release
+
 before_install:
   - go get github.com/mattn/goveralls
 
 script:
-  - go version
   - go test -covermode=count -coverprofile=profile.cov ./rango
   - $GOPATH/bin/goveralls -coverprofile=profile.cov -service=travis-ci
